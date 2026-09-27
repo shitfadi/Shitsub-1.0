@@ -1,48 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.shitsub.app">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Touchscreen is NOT required: makes the app installable/visible on Android TV / Google TV -->
-    <uses-feature
-        android:name="android.hardware.touchscreen"
-        android:required="false" />
-
-    <!-- Declares Leanback (TV) UI support -->
-    <uses-feature
-        android:name="android.software.leanback"
-        android:required="false" />
-
+    <!-- Internet access for GitHub Pages and Gemini API -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
-        android:label="@string/app_name"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:banner="@mipmap/tv_banner"
-        android:theme="@style/AppTheme"
+        android:label="ShitSub"
+        android:supportsRtl="true"
         android:usesCleartextTraffic="false"
-        android:hardwareAccelerated="true">
+        android:theme="@style/Theme.ShitSub">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="userLandscape"
-            android:theme="@style/AppTheme">
+            android:screenOrientation="landscape"
+            android:exported="true">
 
-            <!-- Standard mobile/phone launcher entry -->
+            <!-- Android TV / launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
 
-            <!-- Required for the app to appear on the Android TV / Google TV home screen -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
 
         </activity>
+
     </application>
 
 </manifest>
