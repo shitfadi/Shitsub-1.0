@@ -39,8 +39,6 @@ public class MainActivity extends Activity {
         try {
             setupWebView();
         } catch (Throwable t) {
-            // Don't let a WebView init failure silently kill the app —
-            // show the real reason on screen instead.
             Log.e(TAG, "Failed to initialize WebView", t);
             showFatalError(t);
         }
@@ -49,9 +47,11 @@ public class MainActivity extends Activity {
     private void setupWebView() {
         webView = new WebView(this);
         setContentView(webView);
-
-        webView.setLayoutParams(new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // Note: setContentView() already sizes the WebView to fill the screen.
+        // Do NOT call webView.setLayoutParams(new ViewGroup.LayoutParams(...))
+        // here — a plain ViewGroup.LayoutParams is not compatible with the
+        // window's content container (which requires MarginLayoutParams) and
+        // causes a guaranteed ClassCastException crash on every device.
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
