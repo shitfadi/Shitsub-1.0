@@ -1,159 +1,143 @@
 package com.shitsub.app;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 public class MainActivity extends Activity {
 
-    private static final String TAG = "ShitSub";
     private static final int FILE_CHOOSER_REQUEST_CODE = 51426;
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
 
+    // Your GitHub Pages website
+    private static final String WEBSITE_URL =
+            "https://pkutty6369-droid.github.io/Srt-Malayalam-translation-/";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        try {
-            setupWebView();
-        } catch (Throwable t) {
-            Log.e(TAG, "Failed to initialize WebView", t);
-            showError(t);
-        }
-    }
-
-    private void setupWebView() {
-
         webView = new WebView(this);
         setContentView(webView);
 
-        WebSettings settings = webView.getSettings();
+        WebSettings webSettings = webView.getSettings();
 
         // JavaScript
-        settings.setJavaScriptEnabled(true);
+        webSettings.setJavaScriptEnabled(true);
 
-        // localStorage
-        settings.setDomStorageEnabled(true);
+        // Local storage
+        webSettings.setDomStorageEnabled(true);
 
-        // File/content access
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
+        // File access
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
 
-        // Database
-        settings.setDatabaseEnabled(true);
+        // Better TV/mobile website rendering
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
 
-        // Display
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
+        // Always load the latest GitHub version
+        webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
-        // Cache
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // JavaScript → Android bridge
+        webView.addJavascriptInterface(
+                new AndroidDownload(),
+                "AndroidDownload"
+        );
 
-        // Android TV focus
-        webView.setFocusable(true);
-        webView.setFocusableInTouchMode(true);
-
-        /*
-         * Handle <input type="file"> from the HTML app.
-         */
+        // File picker / upload
         webView.setWebChromeClient(new WebChromeClient() {
 
             @Override
             public boolean onShowFileChooser(
                     WebView webView,
-                    ValueCallback<Uri[]> callback,
+                    ValueCallback<Uri[]> filePathCallback,
                     FileChooserParams fileChooserParams) {
 
-                Log.d(TAG, "File chooser requested");
-
-                // Cancel an old callback if one exists
-                if (filePathCallback != null) {
-                    filePathCallback.onReceiveValue(null);
-                    filePathCallback = null;
+                if (MainActivity.this.filePathCallback != null) {
+                    MainActivity.this.filePathCallback.onReceiveValue(null);
                 }
 
-                filePathCallback = callback;
+                MainActivity.this.filePathCallback = filePathCallback;
+
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+
+                intent.addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+                );
 
                 try {
-
-                    /*
-                     * ACTION_OPEN_DOCUMENT is more reliable than
-                     * ACTION_GET_CONTENT for Android TV / modern Android.
-                     */
-                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-
-                    /*
-                     * Do NOT restrict this to text/plain.
-                     *
-                     * Some Android file managers don't correctly
-                     * identify .srt files.
-                     */
-                    intent.setType("*/*");
-
-                    /*
-                     * Give WebView permission to read the selected file.
-                     */
-                    intent.addFlags(
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                                    | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
-                    );
-
                     startActivityForResult(
                             intent,
                             FILE_CHOOSER_REQUEST_CODE
                     );
-
-                    return true;
-
                 } catch (Exception e) {
-
-                    Log.e(TAG, "Unable to open file picker", e);
-
-                    if (filePathCallback != null) {
-                        filePathCallback.onReceiveValue(null);
-                        filePathCallback = null;
-                    }
-
+                    MainActivity.this.filePathCallback = null;
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Unable to open file picker",
+                            Toast.LENGTH_SHORT
+                    ).show();
                     return false;
                 }
+
+                return true;
             }
         });
 
-        /*
-         * Give initial focus to the WebView for Android TV remote control.
-         */
-        webView.requestFocus(View.FOCUS_DOWN);
+        webView.setWebViewClient(new WebViewClient() {
 
-        /*
-         * Load the HTML app from:
-         *
-         * app/src/main/assets/index.html
-         */
-        webView.loadUrl("file:///android_asset/index.html");
+            @Override
+            public boolean shouldOverrideUrlLoading(
+                    WebView view,
+                    WebResourceRequest request) {
+
+                view.loadUrl(request.getUrl().toString());
+                return true;
+            }
+        });
+
+        // Load GitHub Pages instead of APK's local HTML
+        webView.loadUrl(WEBSITE_URL);
     }
 
-    /*
-     * Receive the selected SRT file.
-     */
+    // Receive selected SRT file
     @Override
     protected void onActivityResult(
             int requestCode,
             int resultCode,
             Intent data) {
 
-        super.onActivityResult(requestCode, resultCode, data);
+        super.onActivityResult(
+                requestCode,
+                resultCode,
+                data
+        );
 
         if (requestCode != FILE_CHOOSER_REQUEST_CODE) {
             return;
@@ -167,110 +151,161 @@ public class MainActivity extends Activity {
 
         if (resultCode == RESULT_OK && data != null) {
 
-            Uri selectedUri = data.getData();
+            Uri uri = data.getData();
 
-            if (selectedUri != null) {
+            if (uri != null) {
+                results = new Uri[]{uri};
 
-                results = new Uri[]{selectedUri};
-
-                /*
-                 * Keep permission to read the selected file.
-                 *
-                 * Some file providers don't support this, so
-                 * failure is safely ignored.
-                 */
                 try {
+                    final int takeFlags =
+                            data.getFlags()
+                                    & (Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
-                    getContentResolver().takePersistableUriPermission(
-                            selectedUri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    );
+                    getContentResolver()
+                            .takePersistableUriPermission(
+                                    uri,
+                                    takeFlags
+                            );
 
-                } catch (Exception e) {
-
-                    Log.d(
-                            TAG,
-                            "Persistable permission not available"
-                    );
+                } catch (Exception ignored) {
                 }
             }
         }
 
-        /*
-         * Send the selected file back to WebView.
-         */
         filePathCallback.onReceiveValue(results);
-
         filePathCallback = null;
     }
 
-    /*
-     * Android back button.
-     */
+    // Android back button
     @Override
     public void onBackPressed() {
 
         if (webView != null && webView.canGoBack()) {
-
             webView.goBack();
-
         } else {
-
             super.onBackPressed();
         }
     }
 
-    /*
-     * Clean up WebView.
-     */
+    // Native Android download bridge
+    public class AndroidDownload {
+
+        @JavascriptInterface
+        public void saveSrt(
+                String base64Data,
+                String fileName) {
+
+            runOnUiThread(() -> {
+
+                try {
+
+                    byte[] data = Base64.decode(
+                            base64Data,
+                            Base64.DEFAULT
+                    );
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+                        // Android 10+
+                        ContentValues values =
+                                new ContentValues();
+
+                        values.put(
+                                MediaStore.Downloads.DISPLAY_NAME,
+                                fileName
+                        );
+
+                        values.put(
+                                MediaStore.Downloads.MIME_TYPE,
+                                "application/x-subrip"
+                        );
+
+                        values.put(
+                                MediaStore.Downloads.RELATIVE_PATH,
+                                Environment.DIRECTORY_DOWNLOADS
+                        );
+
+                        Uri uri = getContentResolver()
+                                .insert(
+                                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                        values
+                                );
+
+                        if (uri == null) {
+                            throw new Exception(
+                                    "Could not create download file"
+                            );
+                        }
+
+                        try (OutputStream outputStream =
+                                     getContentResolver()
+                                             .openOutputStream(uri)) {
+
+                            if (outputStream == null) {
+                                throw new Exception(
+                                        "Could not open download stream"
+                                );
+                            }
+
+                            outputStream.write(data);
+                            outputStream.flush();
+                        }
+
+                    } else {
+
+                        // Android 9 and older
+                        File downloads =
+                                Environment.getExternalStoragePublicDirectory(
+                                        Environment.DIRECTORY_DOWNLOADS
+                                );
+
+                        if (!downloads.exists()) {
+                            downloads.mkdirs();
+                        }
+
+                        File file =
+                                new File(downloads, fileName);
+
+                        try (FileOutputStream fos =
+                                     new FileOutputStream(file)) {
+
+                            fos.write(data);
+                            fos.flush();
+                        }
+                    }
+
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Malayalam SRT saved to Downloads",
+                            Toast.LENGTH_LONG
+                    ).show();
+
+                } catch (Exception e) {
+
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Download failed: " + e.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show();
+                }
+            });
+        }
+    }
+
     @Override
     protected void onDestroy() {
 
         if (webView != null) {
 
             webView.stopLoading();
-
-            webView.loadUrl("about:blank");
-
+            webView.clearHistory();
+            webView.removeAllViews();
             webView.destroy();
 
             webView = null;
         }
 
         super.onDestroy();
-    }
-
-    /*
-     * Show an error if WebView initialization fails.
-     */
-    private void showError(Throwable throwable) {
-
-        android.widget.TextView textView =
-                new android.widget.TextView(this);
-
-        textView.setBackgroundColor(
-                android.graphics.Color.WHITE
-        );
-
-        textView.setTextColor(
-                android.graphics.Color.RED
-        );
-
-        textView.setTextSize(14);
-
-        textView.setPadding(
-                40,
-                80,
-                40,
-                40
-        );
-
-        textView.setText(
-                "ShitSub failed to start.\n\n" +
-                "Reason:\n\n" +
-                Log.getStackTraceString(throwable)
-        );
-
-        setContentView(textView);
     }
 }
