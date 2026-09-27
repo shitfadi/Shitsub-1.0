@@ -1,486 +1,1930 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, viewport-fit=cover"
+>
+
 <meta name="theme-color" content="#E50914">
+
 <title>ShitSub</title>
+
 <style>
-  :root{
-    color-scheme:light;
-    --red:#E50914;
-    --red-dark:#B00610;
-    --bg:#ffffff;
-    --card:#ffffff;
-    --text:#111111;
-    --muted:#767676;
-    --line:#e6e6e6;
-    --danger:#E50914;
-    --ok:#1a7a3c;
+
+/* =========================================================
+   SHITSUB
+   English SRT → Natural Kerala Malayalam
+========================================================= */
+
+:root {
+  --red: #E50914;
+  --red-dark: #B00610;
+  --bg: #ffffff;
+  --card: #f6f6f6;
+  --text: #111111;
+  --muted: #6b6b6b;
+  --border: #dddddd;
+  --success: #16803c;
+  --danger: #b00020;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   APP
+========================================================= */
+
+.app {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px 22px 60px;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo {
+  color: var(--red);
+  font-size: 46px;
+  font-weight: 900;
+  letter-spacing: -2px;
+}
+
+.tagline {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 18px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 15px;
+}
+
+
+/* =========================================================
+   LABELS
+========================================================= */
+
+label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+
+/* =========================================================
+   INPUTS
+========================================================= */
+
+input[type="text"],
+input[type="password"],
+textarea {
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 14px;
+  font-size: 16px;
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+  border-color: #111111;
+}
+
+textarea {
+  min-height: 220px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   CHECKBOX
+========================================================= */
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.checkbox-row input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+
+/* =========================================================
+   FILE INPUT
+========================================================= */
+
+.file-input {
+  width: 100%;
+  background: #ffffff;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+button {
+  min-height: 52px;
+  border-radius: 12px;
+  border: none;
+  padding: 14px 20px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.primary-btn {
+  width: 100%;
+  background: var(--red);
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background: var(--red-dark);
+}
+
+.secondary-btn {
+  width: 100%;
+  background: #ffffff;
+  color: #111111;
+  border: 2px solid var(--border);
+}
+
+.save-btn {
+  width: 100%;
+  background: var(--success);
+  color: #ffffff;
+  margin-top: 12px;
+}
+
+.download-btn {
+  width: 100%;
+  background: #111111;
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   CUSTOM PROMPT
+========================================================= */
+
+.prompt-editor {
+  display: none;
+}
+
+.prompt-info {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.status-card {
+  display: none;
+}
+
+.status-text {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.progress-container {
+  width: 100%;
+  height: 12px;
+  margin-top: 15px;
+  background: #dddddd;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: var(--red);
+  transition: width 0.25s ease;
+}
+
+
+/* =========================================================
+   RESULT
+========================================================= */
+
+.result-card {
+  display: none;
+}
+
+.result-info {
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+
+
+/* =========================================================
+   MESSAGES
+========================================================= */
+
+.error {
+  color: var(--danger);
+  font-weight: 700;
+  line-height: 1.5;
+  margin-top: 12px;
+}
+
+.success {
+  color: var(--success);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 30px;
+}
+
+
+/* =========================================================
+   TV / REMOTE CONTROL
+========================================================= */
+
+button:focus,
+input:focus,
+textarea:focus {
+  outline: 4px solid rgba(229, 9, 20, 0.45);
+  outline-offset: 2px;
+}
+
+@media (min-width: 900px) {
+
+  .app {
+    max-width: 1000px;
+    padding-top: 45px;
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text)}
-  .wrap{width:min(680px,100%);margin:0 auto;padding:28px 16px 40px}
 
-  .brand{display:flex;align-items:center;gap:10px;margin:0 0 22px}
-  .brand .mark{width:34px;height:34px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none}
-  .brand .name{font-weight:800;font-size:20px;letter-spacing:.2px;color:var(--text)}
-
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
-  h1{font-size:22px;line-height:1.2;margin:0 0 7px;color:var(--text)}
-  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;line-height:1.45}
-  label{display:block;font-weight:600;font-size:14px;margin:15px 0 7px;color:var(--text)}
-
-  input[type=password],input[type=text]{width:100%;height:50px;border:1.5px solid var(--line);border-radius:10px;padding:0 14px;font-size:16px;outline:none;background:#fff;color:var(--text)}
-  textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px;outline:none;background:#fff;color:var(--text);font-family:inherit;resize:vertical;min-height:64px}
-  textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(229,9,20,.15)}
-  input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(229,9,20,.15)}
-
-  /* Visible focus ring for D-pad / remote navigation on Google TV */
-  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible,
-  a:focus, button:focus {
-    outline:3px solid var(--red);
-    outline-offset:2px;
-    box-shadow:0 0 0 5px rgba(229,9,20,.18);
+  .logo {
+    font-size: 54px;
   }
 
-  .row{display:flex;gap:10px;align-items:center}
-  button{width:100%;min-height:50px;border:0;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;padding:12px 16px;transition:transform .08s ease, background .15s ease}
-  .primary{background:var(--red);color:#fff}
-  .primary:hover,.primary:focus{background:var(--red-dark)}
-  .secondary{background:#fff;color:var(--text);border:1.5px solid var(--line)}
-  .secondary:hover,.secondary:focus{border-color:var(--red);color:var(--red)}
-  button:disabled{opacity:.4;cursor:not-allowed}
-  button:active{transform:scale(.98)}
+  button {
+    min-height: 58px;
+    font-size: 19px;
+  }
 
-  .filebox{border:1.5px dashed #d9d9d9;border-radius:12px;padding:14px;background:#fafafa}
-  .filename{font-size:14px;color:var(--muted);margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  input[type=file]{display:none}
+  input[type="text"],
+  input[type="password"],
+  textarea {
+    font-size: 18px;
+  }
 
-  .status{margin-top:18px;padding:13px 14px;border-radius:10px;background:#f7f7f7;font-size:14px;line-height:1.45;display:none;color:var(--text)}
-  .status.show{display:block}
-  .status.error{background:#fdeced;color:var(--danger)}
-  .status.ok{background:#eaf6ee;color:var(--ok)}
-  .progress{height:8px;background:#eee;border-radius:99px;overflow:hidden;margin-top:10px;display:none}
-  .bar{height:100%;width:0;background:var(--red);transition:width .2s}
-  .download{margin-top:12px;display:none}
-  .small{font-size:12px;color:var(--muted);margin-top:13px;line-height:1.45}
-  .small b{color:var(--text)}
-  .spinner{display:inline-block;width:13px;height:13px;border:2px solid #e2e2e2;border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  @media(max-width:480px){.wrap{padding:14px 10px 28px}.card{padding:18px;border-radius:14px}h1{font-size:20px}}
+}
+
 </style>
+
 </head>
+
+
 <body>
-<div class="wrap">
-  <div class="brand"><span class="mark">S</span><span class="name">ShitSub</span></div>
-  <main class="card">
-    <h1>Malayalam SRT Translator</h1>
-    <p class="sub">English SRT → natural, colloquial Kerala Malayalam. The file and API key stay on this device.</p>
 
-    <label for="apiKey">Gemini API Key</label>
-    <input id="apiKey" type="password" autocomplete="off" placeholder="Paste your Gemini API key">
-    <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:9px;font-size:13px;color:var(--muted)">
-      <input type="checkbox" id="rememberKey" style="width:auto;height:auto;margin:0">
-      Remember this key on this device
-    </label>
+<div class="app">
 
-    <label>English SRT file</label>
-    <div class="filebox">
-      <label for="srtFile" style="margin:0">
-        <button type="button" class="secondary" id="chooseBtn">Upload English SRT</button>
-      </label>
-      <input id="srtFile" type="file" accept=".srt,text/plain">
-      <div class="filename" id="fileName">No file selected</div>
-    </div>
 
-    <label for="customPrompt">Custom instructions <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-    <textarea id="customPrompt" placeholder="e.g. This is a period drama, keep dialogue slightly formal. Or: main character is from Thrissur, use that dialect."></textarea>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:9px;font-size:13px;color:var(--muted)">
-      <input type="checkbox" id="rememberPrompt" style="width:auto;height:auto;margin:0">
-      Remember these instructions on this device
-    </label>
+<!-- =======================================================
+     HEADER
+======================================================= -->
 
-    <div style="margin-top:14px">
-      <button id="translateBtn" class="primary" disabled>Translate to Malayalam</button>
-    </div>
+<div class="header">
 
-    <div id="status" class="status"></div>
-    <div id="progress" class="progress"><div id="bar" class="bar"></div></div>
+  <div class="logo">
+    ShitSub
+  </div>
 
-    <div class="download" id="downloadArea">
-      <button id="downloadBtn" class="primary">Download Malayalam SRT</button>
-    </div>
+  <div class="tagline">
+    English SRT → Natural Kerala Malayalam
+  </div>
 
-    <div class="small">
-      Default model: <code id="modelName">gemini-3.5-flash-lite</code>. Change <code>MODEL</code> in the code if you want another Gemini model.
-      Your API key is sent directly from this browser to Google's Gemini API. It's only saved on this device, in this browser, if you check "Remember this key" above.
-    </div>
-    <div class="small" style="text-align:center;margin-top:20px">
-      <b>Created By Fadi</b>
-    </div>
-  </main>
 </div>
 
-<script>
-"use strict";
 
-/* Change this model if needed. Gemini 3.5 Flash-Lite is the fastest/cheapest Gemini 3.5 variant, good for straightforward translation. */
+<!-- =======================================================
+     GEMINI API
+======================================================= -->
+
+<div class="card">
+
+  <div class="section-title">
+    Gemini API Key
+  </div>
+
+  <label for="apiKey">
+    API Key
+  </label>
+
+  <input
+    id="apiKey"
+    type="password"
+    placeholder="Enter your Gemini API key"
+    autocomplete="off"
+  >
+
+  <div class="checkbox-row">
+
+    <input
+      id="rememberKey"
+      type="checkbox"
+    >
+
+    <label
+      for="rememberKey"
+      style="margin:0;"
+    >
+      Remember API key
+    </label>
+
+  </div>
+
+</div>
+
+
+<!-- =======================================================
+     SRT FILE
+======================================================= -->
+
+<div class="card">
+
+  <div class="section-title">
+    Subtitle File
+  </div>
+
+  <label for="srtFile">
+    Select English SRT
+  </label>
+
+  <input
+    id="srtFile"
+    class="file-input"
+    type="file"
+    accept=".srt,text/plain"
+  >
+
+  <div
+    id="fileName"
+    class="prompt-info"
+  >
+    No file selected.
+  </div>
+
+</div>
+
+
+<!-- =======================================================
+     CUSTOM PROMPT
+======================================================= -->
+
+<div class="card">
+
+  <div class="section-title">
+    Custom Prompt
+  </div>
+
+
+  <!-- Closed by default -->
+
+  <button
+    id="editPromptBtn"
+    type="button"
+    class="secondary-btn"
+  >
+    Edit Prompt
+  </button>
+
+
+  <!-- Opens only after Edit Prompt -->
+
+  <div
+    id="promptEditor"
+    class="prompt-editor"
+  >
+
+    <label for="customPrompt">
+      Translation Prompt
+    </label>
+
+    <textarea
+      id="customPrompt"
+      placeholder="Enter your custom subtitle translation instructions..."
+    ></textarea>
+
+    <button
+      id="savePromptBtn"
+      type="button"
+      class="save-btn"
+    >
+      Save Prompt
+    </button>
+
+    <div class="prompt-info">
+      Your saved prompt will be remembered on this device.
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =======================================================
+     TRANSLATE
+======================================================= -->
+
+<div class="card">
+
+  <button
+    id="translateBtn"
+    type="button"
+    class="primary-btn"
+  >
+    Translate SRT
+  </button>
+
+  <div
+    id="mainError"
+    class="error"
+  ></div>
+
+</div>
+
+
+<!-- =======================================================
+     STATUS / PROGRESS
+======================================================= -->
+
+<div
+  id="statusCard"
+  class="card status-card"
+>
+
+  <div class="section-title">
+    Translation Progress
+  </div>
+
+  <div
+    id="statusText"
+    class="status-text"
+  >
+    Preparing...
+  </div>
+
+  <div class="progress-container">
+
+    <div
+      id="progressBar"
+      class="progress-bar"
+    ></div>
+
+  </div>
+
+</div>
+
+
+<!-- =======================================================
+     RESULT
+======================================================= -->
+
+<div
+  id="resultCard"
+  class="card result-card"
+>
+
+  <div class="section-title">
+    Translation Complete
+  </div>
+
+  <div
+    id="resultInfo"
+    class="result-info"
+  ></div>
+
+  <button
+    id="downloadBtn"
+    type="button"
+    class="download-btn"
+  >
+    Download Malayalam SRT
+  </button>
+
+</div>
+
+
+<!-- =======================================================
+     FOOTER
+======================================================= -->
+
+<div class="footer">
+  ShitSub • English SRT → Colloquial Kerala Malayalam
+</div>
+
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   CONFIGURATION
+========================================================= */
+
 const MODEL = "gemini-3.5-flash-lite";
 
-/* Smaller batches are deliberately used for reliable JSON output and context handling. */
 const BATCH_SIZE = 75;
+
 const MAX_RETRIES = 3;
+
 const CONTEXT_COUNT = 4;
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-const apiKeyEl = document.getElementById("apiKey");
-const rememberKeyEl = document.getElementById("rememberKey");
-const customPromptEl = document.getElementById("customPrompt");
-const rememberPromptEl = document.getElementById("rememberPrompt");
-const fileEl = document.getElementById("srtFile");
-const chooseBtn = document.getElementById("chooseBtn");
-const fileNameEl = document.getElementById("fileName");
-const translateBtn = document.getElementById("translateBtn");
-const statusEl = document.getElementById("status");
-const progressEl = document.getElementById("progress");
-const barEl = document.getElementById("bar");
-const downloadArea = document.getElementById("downloadArea");
-const downloadBtn = document.getElementById("downloadBtn");
-document.getElementById("modelName").textContent = MODEL;
+const API_URL =
+  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-const SAVED_KEY_STORAGE = "malayalamSrtTranslator_apiKey";
-const SAVED_PROMPT_STORAGE = "malayalamSrtTranslator_customPrompt";
 
-try {
-  const savedKey = localStorage.getItem(SAVED_KEY_STORAGE);
-  if (savedKey) {
-    apiKeyEl.value = savedKey;
-    rememberKeyEl.checked = true;
-  }
-  const savedPrompt = localStorage.getItem(SAVED_PROMPT_STORAGE);
-  if (savedPrompt) {
-    customPromptEl.value = savedPrompt;
-    rememberPromptEl.checked = true;
-  }
-} catch {}
+/* =========================================================
+   DEFAULT TRANSLATION PROMPT
+========================================================= */
 
-function persistKey() {
-  try {
-    if (rememberKeyEl.checked && apiKeyEl.value.trim()) {
-      localStorage.setItem(SAVED_KEY_STORAGE, apiKeyEl.value.trim());
+const DEFAULT_PROMPT = `Translate English movie or TV subtitles into natural, colloquial Kerala Malayalam.
+
+IMPORTANT RULES:
+
+1. Use spoken Malayalam that people in Kerala naturally use in real conversations.
+
+2. Do NOT translate word-for-word.
+
+3. Do NOT use overly formal, literary, textbook, or old-fashioned Malayalam.
+
+4. Preserve the original meaning, emotion, attitude, humor, sarcasm, anger, fear, romance, insults, and personality.
+
+5. Keep the dialogue natural for the character and situation.
+
+6. English words commonly used in Kerala conversations may be kept when they sound natural.
+
+7. Do not unnecessarily convert every English technical or modern word into Malayalam.
+
+8. Preserve swear words, insults, slang, vulgar expressions, and offensive language when they are present and relevant to the original dialogue. Do not censor or soften them.
+
+9. Do not add explanations.
+
+10. Do not remove meaning.
+
+11. Do not summarize.
+
+12. Keep each subtitle reasonably short and natural for reading.
+
+13. Return only the translated dialogue.
+
+14. Do not change subtitle numbering or timestamps.
+
+15. The translation should sound like actual people speaking in Kerala, not like a machine translation.`;
+
+
+/* =========================================================
+   DOM
+========================================================= */
+
+const apiKeyInput =
+  document.getElementById("apiKey");
+
+const rememberKey =
+  document.getElementById("rememberKey");
+
+const srtFile =
+  document.getElementById("srtFile");
+
+const fileName =
+  document.getElementById("fileName");
+
+const editPromptBtn =
+  document.getElementById("editPromptBtn");
+
+const savePromptBtn =
+  document.getElementById("savePromptBtn");
+
+const promptEditor =
+  document.getElementById("promptEditor");
+
+const customPrompt =
+  document.getElementById("customPrompt");
+
+const translateBtn =
+  document.getElementById("translateBtn");
+
+const mainError =
+  document.getElementById("mainError");
+
+const statusCard =
+  document.getElementById("statusCard");
+
+const statusText =
+  document.getElementById("statusText");
+
+const progressBar =
+  document.getElementById("progressBar");
+
+const resultCard =
+  document.getElementById("resultCard");
+
+const resultInfo =
+  document.getElementById("resultInfo");
+
+const downloadBtn =
+  document.getElementById("downloadBtn");
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let parsedSubtitles = [];
+
+let translatedSubtitles = [];
+
+let outputText = "";
+
+let outputName = "";
+
+let isTranslating = false;
+
+
+/* =========================================================
+   LOAD SAVED SETTINGS
+========================================================= */
+
+const savedApiKey =
+  localStorage.getItem("shitsub_api_key");
+
+const savedPrompt =
+  localStorage.getItem("shitsub_custom_prompt");
+
+
+if (savedApiKey) {
+
+  apiKeyInput.value =
+    savedApiKey;
+
+  rememberKey.checked = true;
+
+}
+
+
+customPrompt.value =
+  savedPrompt || DEFAULT_PROMPT;
+
+
+/* =========================================================
+   REMEMBER API KEY
+========================================================= */
+
+rememberKey.addEventListener(
+  "change",
+  () => {
+
+    if (rememberKey.checked) {
+
+      if (apiKeyInput.value.trim()) {
+
+        localStorage.setItem(
+          "shitsub_api_key",
+          apiKeyInput.value.trim()
+        );
+
+      }
+
     } else {
-      localStorage.removeItem(SAVED_KEY_STORAGE);
-    }
-  } catch {}
-}
 
-function persistPrompt() {
-  try {
-    if (rememberPromptEl.checked && customPromptEl.value.trim()) {
-      localStorage.setItem(SAVED_PROMPT_STORAGE, customPromptEl.value.trim());
+      localStorage.removeItem(
+        "shitsub_api_key"
+      );
+
+    }
+
+  }
+);
+
+
+apiKeyInput.addEventListener(
+  "input",
+  () => {
+
+    if (rememberKey.checked) {
+
+      localStorage.setItem(
+        "shitsub_api_key",
+        apiKeyInput.value.trim()
+      );
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   CUSTOM PROMPT
+========================================================= */
+
+editPromptBtn.addEventListener(
+  "click",
+  () => {
+
+    promptEditor.style.display =
+      "block";
+
+    editPromptBtn.style.display =
+      "none";
+
+    customPrompt.focus();
+
+  }
+);
+
+
+savePromptBtn.addEventListener(
+  "click",
+  () => {
+
+    const prompt =
+      customPrompt.value.trim();
+
+    if (!prompt) {
+
+      customPrompt.value =
+        DEFAULT_PROMPT;
+
+    }
+
+    localStorage.setItem(
+      "shitsub_custom_prompt",
+      customPrompt.value
+    );
+
+    promptEditor.style.display =
+      "none";
+
+    editPromptBtn.style.display =
+      "block";
+
+  }
+);
+
+
+/* =========================================================
+   FILE SELECTED
+========================================================= */
+
+srtFile.addEventListener(
+  "change",
+  () => {
+
+    if (
+      srtFile.files &&
+      srtFile.files.length > 0
+    ) {
+
+      fileName.textContent =
+        srtFile.files[0].name;
+
     } else {
-      localStorage.removeItem(SAVED_PROMPT_STORAGE);
+
+      fileName.textContent =
+        "No file selected.";
+
     }
-  } catch {}
+
+  }
+);
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+function showError(message) {
+
+  mainError.textContent =
+    message;
+
 }
 
-rememberKeyEl.addEventListener("change", persistKey);
-apiKeyEl.addEventListener("input", persistKey);
-rememberPromptEl.addEventListener("change", persistPrompt);
-customPromptEl.addEventListener("input", persistPrompt);
 
-let parsed = null;
-let outputText = null;
-let outputName = null;
+/* =========================================================
+   STATUS
+========================================================= */
 
-chooseBtn.addEventListener("click", () => fileEl.click());
+function setStatus(
+  message,
+  percent = null
+) {
 
-fileEl.addEventListener("change", async () => {
-  outputText = null;
-  downloadArea.style.display = "none";
-  parsed = null;
-  if (!fileEl.files.length) return;
-  const file = fileEl.files[0];
-  fileNameEl.textContent = file.name;
-  try {
-    const text = await file.text();
-    parsed = parseSRT(text);
-    setStatus(`Loaded ${parsed.blocks.length} subtitle blocks.`, "normal");
-    translateBtn.disabled = !apiKeyEl.value.trim();
-  } catch (e) {
-    setStatus(e.message || "Invalid SRT format.", "error");
-    translateBtn.disabled = true;
+  statusText.textContent =
+    message;
+
+  if (percent !== null) {
+
+    progressBar.style.width =
+      `${percent}%`;
+
   }
-});
 
-apiKeyEl.addEventListener("input", () => {
-  translateBtn.disabled = !(apiKeyEl.value.trim() && parsed);
-});
-
-function setStatus(message, type="normal", progress=null) {
-  statusEl.className = "status show" + (type === "error" ? " error" : type === "ok" ? " ok" : "");
-  statusEl.innerHTML = message;
-  if (progress !== null) {
-    progressEl.style.display = "block";
-    barEl.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-  } else {
-    progressEl.style.display = "none";
-    barEl.style.width = "0%";
-  }
 }
+
+
+/* =========================================================
+   SRT PARSER
+========================================================= */
 
 function parseSRT(text) {
-  /* Keep the source as closely as possible. Only the dialogue region is replaced later. */
-  const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const chunks = normalized.split(/\n{2,}/);
-  const blocks = [];
-  for (const raw of chunks) {
-    if (!raw.trim()) continue;
-    const lines = raw.split("\n");
-    if (lines.length < 2) throw new Error("Invalid SRT format: a subtitle block is missing its timestamp.");
-    const index = lines[0].trim();
-    const timeLine = lines[1];
-    if (!/^\d+$/.test(index)) throw new Error(`Invalid SRT index: ${index}`);
-    const tm = timeLine.match(/^(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})(.*)$/);
-    if (!tm) throw new Error(`Invalid SRT timestamp near subtitle ${index}.`);
-    const dialogueLines = lines.slice(2);
-    const dialogue = dialogueLines.join("\n");
-    blocks.push({
-      id: Number(index),
-      indexLine: lines[0],
-      timestampLine: lines[1],
-      dialogue,
-      original: raw,
-      blank: dialogue.trim() === ""
+
+  text =
+    text.replace(/^\uFEFF/, "");
+
+  text =
+    text.replace(/\r\n/g, "\n");
+
+  text =
+    text.replace(/\r/g, "\n");
+
+  const blocks =
+    text
+      .split(/\n\s*\n/)
+      .map(block => block.trim())
+      .filter(Boolean);
+
+  const subtitles = [];
+
+  for (const block of blocks) {
+
+    const lines =
+      block.split("\n");
+
+    if (lines.length < 3) {
+      continue;
+    }
+
+    const number =
+      lines[0].trim();
+
+    const timestamp =
+      lines[1].trim();
+
+    if (
+      !/^\d+$/.test(number)
+    ) {
+      continue;
+    }
+
+    if (
+      !timestamp.includes("-->")
+    ) {
+      continue;
+    }
+
+    const dialogue =
+      lines
+        .slice(2)
+        .join("\n")
+        .trim();
+
+    subtitles.push({
+
+      index: number,
+
+      timestamp: timestamp,
+
+      text: dialogue
+
     });
+
   }
-  if (!blocks.length) throw new Error("The SRT file is empty.");
-  const ids = blocks.map(b => b.id);
-  if (new Set(ids).size !== ids.length) throw new Error("Invalid SRT: duplicate subtitle indexes.");
-  for (let i = 1; i < ids.length; i++) {
-    if (ids[i] !== ids[i-1] + 1) {
-      /* SRTs can technically use non-contiguous indexes, but exact reconstruction is safer. */
-      // Do not reject: the original indexes are preserved exactly.
-    }
-  }
-  return { blocks, newline: "\r\n" };
+
+  return subtitles;
 }
 
-function stripForTranslation(text) {
-  /* Keep formatting tags in the string so Gemini can preserve them, but only dialogue is sent. */
-  return text.replace(/\n+/g, " ").replace(/[ \t]+/g, " ").trim();
+
+/* =========================================================
+   BUILD SRT
+========================================================= */
+
+function buildSRT(subtitles) {
+
+  return subtitles
+    .map(subtitle => {
+
+      return [
+        subtitle.index,
+        subtitle.timestamp,
+        subtitle.text
+      ].join("\n");
+
+    })
+    .join("\n\n");
 }
 
-function oneLine(text) {
-  return String(text ?? "").replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+
+/* =========================================================
+   WAIT
+========================================================= */
+
+function sleep(ms) {
+
+  return new Promise(
+    resolve => setTimeout(resolve, ms)
+  );
+
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function buildPrompt(items, contextBefore, contextAfter, customInstructions) {
-  return `
-You are translating English movie/TV subtitles into NATURAL, COLLOQUIAL, SPOKEN KERALA MALAYALAM.
+/* =========================================================
+   GEMINI REQUEST
+========================================================= */
 
-This is subtitle dialogue, not a school translation exercise. Make it sound like real Malayalis speaking in a Malayalam-dubbed movie.
+async function translateBatch(
+  batch,
+  previousContext,
+  nextContext
+) {
 
-STYLE:
-- Use natural Kerala spoken Malayalam and appropriate local slang.
-- Do NOT use formal, literary, textbook, or word-for-word Malayalam.
-- Preserve meaning, emotion, humor, sarcasm, threats, insults, romance, and character relationships.
-- Preserve the character's personality and intensity.
-- Friends can be casual; angry/street characters can be rough; officials can sound serious.
-- Do not sanitize profanity. Translate vulgarity/insults naturally and only as strong as the source/context requires.
-- English words are fine where they are naturally used in Kerala conversation.
-- Never add explanations, translator notes, stage directions, or information that is not present.
-- Never omit important meaning.
-- Every returned translation MUST be exactly ONE LINE. Never use newline characters inside a translation.
-- Preserve existing subtitle formatting tags such as <i>, </i>, <b>, </b>, <u>, </u> in the appropriate positions. Do not invent new formatting.
-- Translate ONLY the requested items. Context is only for understanding.
-- Do NOT generate SRT timestamps, indexes, or an SRT file.
-${customInstructions ? `
-ADDITIONAL INSTRUCTIONS FROM THE USER (follow these, but never let them override the ONE LINE rule or the requirement to translate only the requested items):
-${customInstructions}
-` : ""}
-SURROUNDING CONTEXT (do not translate these):
-${JSON.stringify({before: contextBefore, after: contextAfter}, null, 2)}
+  const userPrompt = `You are translating subtitles from English into natural spoken Kerala Malayalam.
 
-REQUESTED ITEMS:
-${JSON.stringify(items, null, 2)}
-`;
+CUSTOM TRANSLATION INSTRUCTIONS:
+
+${customPrompt.value.trim() || DEFAULT_PROMPT}
+
+
+PREVIOUS SUBTITLE CONTEXT:
+
+${previousContext}
+
+
+CURRENT SUBTITLES TO TRANSLATE:
+
+${batch
+  .map(item => {
+
+    return `${item.index}
+${item.timestamp}
+${item.text}`;
+
+  })
+  .join("\n\n")}
+
+
+NEXT SUBTITLE CONTEXT:
+
+${nextContext}
+
+
+OUTPUT REQUIREMENTS:
+
+Return a JSON array.
+
+Each object must contain:
+
+{
+  "index": "original subtitle number",
+  "translation": "Malayalam translation"
 }
 
-async function callGemini(items, before, after, apiKey, customInstructions) {
-  const schema = {
-    type: "object",
-    properties: {
-      translations: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            id: { type: "integer" },
-            text: { type: "string" }
-          },
-          required: ["id", "text"]
-        }
+IMPORTANT:
+
+- Return every current subtitle exactly once.
+- Do not skip subtitles.
+- Do not add subtitles.
+- Keep the original index.
+- Translate only the dialogue.
+- Do not translate timestamps.
+- Do not include markdown.
+- Do not include explanations.
+- Use natural colloquial Kerala Malayalam.
+- Preserve emotion and character style.
+- Preserve relevant slang, insults, profanity and vulgar language.
+- Do not censor or sanitize dialogue.
+- Do not make the Malayalam unnecessarily formal.`;
+
+
+  const requestBody = {
+
+    contents: [
+
+      {
+
+        role: "user",
+
+        parts: [
+
+          {
+            text: userPrompt
+          }
+
+        ]
+
       }
-    },
-    required: ["translations"]
-  };
 
-  const body = {
-    contents: [{ role: "user", parts: [{ text: buildPrompt(items, before, after, customInstructions) }] }],
+    ],
+
     generationConfig: {
-      temperature: 0.55,
-      responseMimeType: "application/json",
-      responseSchema: schema
+
+      temperature: 0.7,
+
+      responseMimeType:
+        "application/json",
+
+      responseSchema: {
+
+        type: "ARRAY",
+
+        items: {
+
+          type: "OBJECT",
+
+          properties: {
+
+            index: {
+              type: "STRING"
+            },
+
+            translation: {
+              type: "STRING"
+            }
+
+          },
+
+          required: [
+            "index",
+            "translation"
+          ]
+
+        }
+
+      }
+
     }
+
   };
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey
-    },
-    body: JSON.stringify(body)
-  });
-
-  let data = null;
-  try { data = await res.json(); } catch {}
-
-  if (!res.ok) {
-    const msg = data?.error?.message || `Gemini API error (${res.status})`;
-    const err = new Error(msg);
-    err.status = res.status;
-    throw err;
-  }
-
-  const raw = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-  if (!raw) throw new Error("Gemini returned an empty response.");
-
-  let parsedJson;
-  try {
-    parsedJson = JSON.parse(raw);
-  } catch {
-    throw new Error("Gemini returned invalid JSON.");
-  }
-
-  return validateResponse(items, parsedJson);
-}
-
-function validateResponse(items, data) {
-  if (!data || !Array.isArray(data.translations)) throw new Error("Invalid Gemini response: translations array missing.");
-
-  const expected = items.map(x => x.id);
-  const got = data.translations.map(x => Number(x.id));
-
-  if (got.length !== expected.length) throw new Error("Invalid Gemini response: wrong number of translations.");
-  for (let i = 0; i < expected.length; i++) {
-    if (got[i] !== expected[i]) throw new Error("Invalid Gemini response: missing, extra, or reordered subtitle ID.");
-    if (typeof data.translations[i].text !== "string") throw new Error("Invalid Gemini response: translation text missing.");
-  }
-
-  return data.translations.map(x => ({ id: Number(x.id), text: oneLine(x.text) }));
-}
-
-function classifyError(e) {
-  const s = e?.status;
-  if (s === 400 || s === 401 || s === 403) return "Invalid Gemini API key or API request.";
-  if (s === 429) return "Gemini rate limit reached.";
-  if (s >= 500) return "Gemini server error.";
-  if (e instanceof TypeError) return "Network error. Check your internet connection or browser network permissions.";
-  return e?.message || "Translation failed.";
-}
-
-async function translateBatch(batch, startIndex, allBlocks, apiKey, customInstructions) {
-  const items = batch.filter(b => !b.blank).map(b => ({ id: b.id, text: stripForTranslation(b.dialogue) }));
-  if (!items.length) return [];
-
-  const before = allBlocks.slice(Math.max(0, startIndex - CONTEXT_COUNT), startIndex)
-    .filter(b => !b.blank)
-    .map(b => ({id:b.id, text:stripForTranslation(b.dialogue)}));
-  const after = allBlocks.slice(startIndex + batch.length, startIndex + batch.length + CONTEXT_COUNT)
-    .filter(b => !b.blank)
-    .map(b => ({id:b.id, text:stripForTranslation(b.dialogue)}));
 
   let lastError = null;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+
+
+  for (
+    let attempt = 1;
+    attempt <= MAX_RETRIES;
+    attempt++
+  ) {
+
     try {
-      return await callGemini(items, before, after, apiKey, customInstructions);
-    } catch (e) {
-      lastError = e;
-      if ([400,401,403].includes(e?.status)) throw e;
-      if (attempt < MAX_RETRIES) {
-        const wait = e?.status === 429 ? 2500 * attempt : 900 * attempt;
-        setStatus(`<span class="spinner"></span>Retrying batch (${attempt + 1}/${MAX_RETRIES})…`);
-        await sleep(wait);
+
+      const response =
+        await fetch(
+          `${API_URL}?key=${encodeURIComponent(apiKeyInput.value.trim())}`,
+          {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify(requestBody)
+
+          }
+        );
+
+
+      if (!response.ok) {
+
+        const errorText =
+          await response.text();
+
+        throw new Error(
+          `Gemini API error ${response.status}: ${errorText}`
+        );
+
       }
+
+
+      const data =
+        await response.json();
+
+
+      const text =
+        data
+          ?.candidates?.[0]
+          ?.content?.parts?.[0]
+          ?.text;
+
+
+      if (!text) {
+
+        throw new Error(
+          "Gemini returned an empty response."
+        );
+
+      }
+
+
+      let parsed;
+
+      try {
+
+        parsed =
+          JSON.parse(text);
+
+      } catch {
+
+        const cleaned =
+          text
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .trim();
+
+        parsed =
+          JSON.parse(cleaned);
+
+      }
+
+
+      if (!Array.isArray(parsed)) {
+
+        throw new Error(
+          "Gemini returned invalid subtitle data."
+        );
+
+      }
+
+
+      return parsed;
+
+    } catch (error) {
+
+      lastError =
+        error;
+
+      if (
+        attempt <
+        MAX_RETRIES
+      ) {
+
+        setStatus(
+          `Retrying batch... (${attempt}/${MAX_RETRIES})`
+        );
+
+        await sleep(
+          1500 * attempt
+        );
+
+      }
+
     }
+
   }
-  throw lastError || new Error("Translation failed.");
+
+
+  throw lastError ||
+    new Error(
+      "Translation failed."
+    );
+
 }
 
-translateBtn.addEventListener("click", async () => {
-  if (!parsed || !apiKeyEl.value.trim()) return;
 
-  translateBtn.disabled = true;
-  downloadArea.style.display = "none";
-  outputText = null;
+/* =========================================================
+   TRANSLATE
+========================================================= */
 
-  const apiKey = apiKeyEl.value.trim();
-  const customInstructions = customPromptEl.value.trim();
-  const translations = new Map();
+translateBtn.addEventListener(
+  "click",
+  async () => {
 
-  try {
-    const total = parsed.blocks.length;
-    setStatus(`<span class="spinner"></span>Starting translation…`, "normal", 0);
-
-    for (let start = 0; start < total; start += BATCH_SIZE) {
-      const batch = parsed.blocks.slice(start, Math.min(start + BATCH_SIZE, total));
-      const end = start + batch.length;
-      setStatus(`<span class="spinner"></span>Translating ${Math.min(end,total)} / ${total} subtitles…`, "normal", (start / total) * 100);
-
-      const result = await translateBatch(batch, start, parsed.blocks, apiKey, customInstructions);
-      for (const t of result) translations.set(t.id, t.text);
-
-      setStatus(`<span class="spinner"></span>Translating ${Math.min(end,total)} / ${total} subtitles…`, "normal", (end / total) * 100);
+    if (isTranslating) {
+      return;
     }
 
-    /* Rebuild from the original blocks. Gemini never gets to touch indexes/timestamps. */
-    const outputBlocks = parsed.blocks.map(b => {
-      if (b.blank) return `${b.indexLine}\r\n${b.timestampLine}\r\n`;
-      const translated = translations.get(b.id);
-      if (translated === undefined) throw new Error(`Missing translation for subtitle ${b.id}.`);
-      return `${b.indexLine}\r\n${b.timestampLine}\r\n${translated}`;
-    });
 
-    outputText = outputBlocks.join("\r\n\r\n") + "\r\n";
-    const base = fileEl.files[0].name.replace(/\.srt$/i, "");
-    outputName = `${base}_Malayalam.srt`;
+    mainError.textContent =
+      "";
 
-    setStatus("Translation complete ✓", "ok", 100);
-    downloadArea.style.display = "block";
-  } catch (e) {
-    setStatus(classifyError(e), "error");
-  } finally {
-    translateBtn.disabled = false;
+    resultCard.style.display =
+      "none";
+
+
+    /* API KEY */
+
+    const apiKey =
+      apiKeyInput.value.trim();
+
+    if (!apiKey) {
+
+      showError(
+        "Please enter your Gemini API key."
+      );
+
+      return;
+    }
+
+
+    /* FILE */
+
+    if (
+      !srtFile.files ||
+      srtFile.files.length === 0
+    ) {
+
+      showError(
+        "Please select an English SRT file."
+      );
+
+      return;
+    }
+
+
+    /* PROMPT */
+
+    const prompt =
+      customPrompt.value.trim();
+
+    if (!prompt) {
+
+      customPrompt.value =
+        DEFAULT_PROMPT;
+
+      localStorage.setItem(
+        "shitsub_custom_prompt",
+        DEFAULT_PROMPT
+      );
+
+    }
+
+
+    /* SAVE API KEY */
+
+    if (rememberKey.checked) {
+
+      localStorage.setItem(
+        "shitsub_api_key",
+        apiKey
+      );
+
+    }
+
+
+    isTranslating =
+      true;
+
+    translateBtn.disabled =
+      true;
+
+    translateBtn.textContent =
+      "Translating...";
+
+
+    statusCard.style.display =
+      "block";
+
+
+    try {
+
+      /* ==========================================
+         READ FILE
+      ========================================== */
+
+      const file =
+        srtFile.files[0];
+
+      const text =
+        await file.text();
+
+
+      /* ==========================================
+         PARSE
+      ========================================== */
+
+      parsedSubtitles =
+        parseSRT(text);
+
+
+      if (
+        parsedSubtitles.length === 0
+      ) {
+
+        throw new Error(
+          "No valid SRT subtitles were found."
+        );
+
+      }
+
+
+      translatedSubtitles =
+        new Array(
+          parsedSubtitles.length
+        );
+
+
+      const total =
+        parsedSubtitles.length;
+
+      const totalBatches =
+        Math.ceil(
+          total / BATCH_SIZE
+        );
+
+
+      /* ==========================================
+         BATCH TRANSLATION
+      ========================================== */
+
+      for (
+        let batchNumber = 0;
+        batchNumber < totalBatches;
+        batchNumber++
+      ) {
+
+        const start =
+          batchNumber *
+          BATCH_SIZE;
+
+        const end =
+          Math.min(
+            start + BATCH_SIZE,
+            total
+          );
+
+
+        const batch =
+          parsedSubtitles.slice(
+            start,
+            end
+          );
+
+
+        const contextStart =
+          Math.max(
+            0,
+            start - CONTEXT_COUNT
+          );
+
+
+        const contextEnd =
+          Math.min(
+            total,
+            end + CONTEXT_COUNT
+          );
+
+
+        const previousContext =
+          parsedSubtitles
+            .slice(
+              contextStart,
+              start
+            )
+            .map(item =>
+              `${item.index}: ${item.text}`
+            )
+            .join("\n");
+
+
+        const nextContext =
+          parsedSubtitles
+            .slice(
+              end,
+              contextEnd
+            )
+            .map(item =>
+              `${item.index}: ${item.text}`
+            )
+            .join("\n");
+
+
+        setStatus(
+          `Translating subtitles ${start + 1}–${end} of ${total}...`,
+          Math.round(
+            (start / total) * 100
+          )
+        );
+
+
+        const result =
+          await translateBatch(
+            batch,
+            previousContext,
+            nextContext
+          );
+
+
+        /* ==========================================
+           MAP TRANSLATIONS
+        ========================================== */
+
+        const translationMap =
+          new Map();
+
+
+        for (
+          const item of result
+        ) {
+
+          if (
+            item &&
+            item.index !== undefined &&
+            typeof item.translation === "string"
+          ) {
+
+            translationMap.set(
+              String(item.index),
+              item.translation.trim()
+            );
+
+          }
+
+        }
+
+
+        for (
+          let i = 0;
+          i < batch.length;
+          i++
+        ) {
+
+          const original =
+            batch[i];
+
+          const translated =
+            translationMap.get(
+              String(original.index)
+            );
+
+
+          if (
+            translated !== undefined
+          ) {
+
+            translatedSubtitles[
+              start + i
+            ] = {
+
+              index:
+                original.index,
+
+              timestamp:
+                original.timestamp,
+
+              text:
+                translated
+
+            };
+
+          } else {
+
+            /*
+              If Gemini misses an item,
+              keep original dialogue rather
+              than destroying the SRT.
+            */
+
+            translatedSubtitles[
+              start + i
+            ] = {
+
+              index:
+                original.index,
+
+              timestamp:
+                original.timestamp,
+
+              text:
+                original.text
+
+            };
+
+          }
+
+        }
+
+
+        setStatus(
+          `Completed ${end} of ${total} subtitles.`,
+          Math.round(
+            (end / total) * 100
+          )
+        );
+
+
+        /*
+          Small delay between batches to
+          reduce sudden API pressure.
+        */
+
+        if (
+          batchNumber <
+          totalBatches - 1
+        ) {
+
+          await sleep(300);
+
+        }
+
+      }
+
+
+      /* ==========================================
+         BUILD OUTPUT
+      ========================================== */
+
+      outputText =
+        buildSRT(
+          translatedSubtitles
+        );
+
+
+      const originalName =
+        file.name
+          .replace(
+            /\.srt$/i,
+            ""
+          );
+
+
+      outputName =
+        `${originalName}_Malayalam.srt`;
+
+
+      /* ==========================================
+         COMPLETE
+      ========================================== */
+
+      setStatus(
+        `Translation complete: ${total} subtitles.`,
+        100
+      );
+
+
+      resultInfo.innerHTML =
+        `<div class="success">
+          ${total} subtitles translated successfully.
+        </div>
+        <div style="margin-top:8px;">
+          File: ${escapeHTML(outputName)}
+        </div>`;
+
+
+      resultCard.style.display =
+        "block";
+
+
+      setTimeout(() => {
+
+        resultCard.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+
+      }, 200);
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      showError(
+        error?.message ||
+        "Translation failed."
+      );
+
+      setStatus(
+        "Translation failed."
+      );
+
+    } finally {
+
+      isTranslating =
+        false;
+
+      translateBtn.disabled =
+        false;
+
+      translateBtn.textContent =
+        "Translate SRT";
+
+    }
+
   }
-});
+);
 
-downloadBtn.addEventListener("click", () => {
-  if (!outputText) return;
-  const blob = new Blob(["\uFEFF", outputText], {type:"text/plain;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = outputName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
+
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
+
+function escapeHTML(value) {
+
+  return String(value)
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+
+
+/* =========================================================
+   DOWNLOAD
+========================================================= */
+
+downloadBtn.addEventListener(
+  "click",
+  () => {
+
+    if (!outputText) {
+      return;
+    }
+
+
+    /*
+      UTF-8 BOM helps some subtitle
+      players recognize Malayalam correctly.
+    */
+
+    const textWithBom =
+      "\uFEFF" +
+      outputText;
+
+
+    /* ==========================================
+       ANDROID TV APK
+    ========================================== */
+
+    if (
+      typeof AndroidDownload !== "undefined" &&
+      typeof AndroidDownload.saveSrt === "function"
+    ) {
+
+      try {
+
+        const encoder =
+          new TextEncoder();
+
+        const bytes =
+          encoder.encode(
+            textWithBom
+          );
+
+
+        let binary = "";
+
+        const chunkSize =
+          0x8000;
+
+
+        for (
+          let i = 0;
+          i < bytes.length;
+          i += chunkSize
+        ) {
+
+          const chunk =
+            bytes.subarray(
+              i,
+              Math.min(
+                i + chunkSize,
+                bytes.length
+              )
+            );
+
+
+          binary +=
+            String.fromCharCode(
+              ...chunk
+            );
+
+        }
+
+
+        const base64 =
+          btoa(binary);
+
+
+        AndroidDownload.saveSrt(
+          base64,
+          outputName
+        );
+
+
+        return;
+
+      } catch (error) {
+
+        console.error(
+          "Android download failed:",
+          error
+        );
+
+      }
+
+    }
+
+
+    /* ==========================================
+       NORMAL BROWSER
+    ========================================== */
+
+    try {
+
+      const blob =
+        new Blob(
+          [textWithBom],
+          {
+            type:
+              "application/x-subrip;charset=utf-8"
+          }
+        );
+
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+
+      const a =
+        document.createElement(
+          "a"
+        );
+
+
+      a.href =
+        url;
+
+      a.download =
+        outputName;
+
+      a.style.display =
+        "none";
+
+
+      document.body.appendChild(
+        a
+      );
+
+
+      a.click();
+
+
+      a.remove();
+
+
+      setTimeout(
+        () => {
+          URL.revokeObjectURL(
+            url
+          );
+        },
+        1000
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        error
+      );
+
+      showError(
+        "Could not download the SRT file."
+      );
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   INITIAL UI
+========================================================= */
+
+promptEditor.style.display =
+  "none";
+
+editPromptBtn.style.display =
+  "block";
+
+statusCard.style.display =
+  "none";
+
+resultCard.style.display =
+  "none";
+
+
 </script>
+
 </body>
+
 </html>
