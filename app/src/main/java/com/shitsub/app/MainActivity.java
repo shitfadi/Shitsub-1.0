@@ -2,8 +2,11 @@ package com.shitsub.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,18 +14,19 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.TextView;
 
 /**
  * Hosts the ShitSub web app (assets/index.html) inside a full-screen WebView.
  *
- * Two things matter for this to work correctly on Android TV / Google TV:
- *  1. onShowFileChooser is implemented, otherwise the "Upload English SRT"
- *     <input type="file"> button silently does nothing (a very common WebView bug).
- *  2. The WebView explicitly requests focus so the remote's D-pad reaches it;
- *     otherwise arrow-key/D-pad navigation on a TV launcher can fail to land
- *     any focus inside the page at all.
+ * This version wraps WebView creation in a try/catch: on some devices the
+ * system's WebView component can be missing, disabled, or too old, which
+ * otherwise crashes the app instantly on launch with no visible error.
+ * If that happens here, you'll see a readable on-screen message instead.
  */
 public class MainActivity extends Activity {
+
+    private static final String TAG = "ShitSub";
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
@@ -32,8 +36,22 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        try {
+            setupWebView();
+        } catch (Throwable t) {
+            // Don't let a WebView init failure silently kill the app —
+            // show the real reason on screen instead.
+            Log.e(TAG, "Failed to initialize WebView", t);
+            showFatalError(t);
+        }
+    }
+
+    private void setupWebView() {
         webView = new WebView(this);
         setContentView(webView);
+
+        webView.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -51,7 +69,6 @@ public class MainActivity extends Activity {
                                               FileChooserParams fileChooserParams) {
                 filePathCallback = filePathCallbackParam;
                 Intent intent = fileChooserParams.createIntent();
-                // Constrain to text/subtitle-like files; user's SRT files are plain text.
                 intent.setType("*/*");
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
                         "text/plain", "application/x-subrip", "application/octet-stream"
@@ -67,15 +84,24 @@ public class MainActivity extends Activity {
             }
         });
 
-        webView.setLayoutParams(new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        // Make sure the remote's D-pad actually reaches the WebView content.
+        // Make sure the remote's D-pad / touch actually reaches the WebView content.
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
         webView.requestFocus(View.FOCUS_DOWN);
 
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    /** Shows the actual exception on screen instead of a silent crash-to-home. */
+    private void showFatalError(Throwable t) {
+        TextView tv = new TextView(this);
+        tv.setBackgroundColor(Color.WHITE);
+        tv.setTextColor(Color.parseColor("#E50914"));
+        tv.setTextSize(14);
+        tv.setPadding(40, 80, 40, 40);
+        tv.setGravity(Gravity.START);
+        tv.setText("ShitSub failed to start.\n\nReason:\n" + Log.getStackTraceString(t));
+        setContentView(tv);
     }
 
     @Override
@@ -97,23 +123,6 @@ public class MainActivity extends Activity {
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // Let the WebView / focused HTML control handle D-pad + select first.
-        if (webView != null && webView.hasFocus()) {
-            switch (keyCode) {
-                case KeyEvent.KEYCODE_DPAD_UP:
-                case KeyEvent.KEYCODE_DPAD_DOWN:
-                case KeyEvent.KEYCODE_DPAD_LEFT:
-                case KeyEvent.KEYCODE_DPAD_RIGHT:
-                case KeyEvent.KEYCODE_DPAD_CENTER:
-                case KeyEvent.KEYCODE_ENTER:
-                    return super.onKeyDown(keyCode, event);
-            }
-        }
-        return super.onKeyDown(keyCode, event);
     }
 
     @Override
