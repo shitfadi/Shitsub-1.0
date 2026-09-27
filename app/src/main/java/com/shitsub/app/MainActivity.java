@@ -16,14 +16,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.TextView;
 
-/**
- * Hosts the ShitSub web app (assets/index.html) inside a full-screen WebView.
- *
- * This version wraps WebView creation in a try/catch: on some devices the
- * system's WebView component can be missing, disabled, or too old, which
- * otherwise crashes the app instantly on launch with no visible error.
- * If that happens here, you'll see a readable on-screen message instead.
- */
 public class MainActivity extends Activity {
 
     private static final String TAG = "ShitSub";
@@ -47,11 +39,6 @@ public class MainActivity extends Activity {
     private void setupWebView() {
         webView = new WebView(this);
         setContentView(webView);
-        // Note: setContentView() already sizes the WebView to fill the screen.
-        // Do NOT call webView.setLayoutParams(new ViewGroup.LayoutParams(...))
-        // here — a plain ViewGroup.LayoutParams is not compatible with the
-        // window's content container (which requires MarginLayoutParams) and
-        // causes a guaranteed ClassCastException crash on every device.
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -68,11 +55,14 @@ public class MainActivity extends Activity {
                                               ValueCallback<Uri[]> filePathCallbackParam,
                                               FileChooserParams fileChooserParams) {
                 filePathCallback = filePathCallbackParam;
-                Intent intent = fileChooserParams.createIntent();
+                // Show ALL files rather than filtering by MIME type: many file
+                // managers (especially OEM ones) don't tag .srt files with a
+                // matching MIME type, which made the picker show nothing
+                // selectable and appear to hang. Letting the user browse
+                // freely and pick their .srt manually is far more reliable.
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
                 intent.setType("*/*");
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
-                        "text/plain", "application/x-subrip", "application/octet-stream"
-                });
                 try {
                     startActivityForResult(Intent.createChooser(intent, "Select SRT file"),
                             FILE_CHOOSER_REQUEST_CODE);
@@ -92,7 +82,6 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    /** Shows the actual exception on screen instead of a silent crash-to-home. */
     private void showFatalError(Throwable t) {
         TextView tv = new TextView(this);
         tv.setBackgroundColor(Color.WHITE);
