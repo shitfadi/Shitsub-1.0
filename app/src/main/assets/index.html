@@ -2,25 +2,12 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1, viewport-fit=cover"
->
-
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#E50914">
-
 <title>ShitSub</title>
 
 <style>
-
-/* =========================================================
-   SHITSUB
-   English SRT → Natural Kerala Malayalam
-========================================================= */
-
 :root {
   --red: #E50914;
   --red-dark: #B00610;
@@ -46,10 +33,7 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 button,
@@ -62,22 +46,12 @@ button {
   cursor: pointer;
 }
 
-
-/* =========================================================
-   APP
-========================================================= */
-
 .app {
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
   padding: 30px 22px 60px;
 }
-
-
-/* =========================================================
-   HEADER
-========================================================= */
 
 .header {
   text-align: center;
@@ -97,11 +71,6 @@ button {
   font-size: 15px;
 }
 
-
-/* =========================================================
-   CARD
-========================================================= */
-
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -116,22 +85,12 @@ button {
   margin-bottom: 15px;
 }
 
-
-/* =========================================================
-   LABELS
-========================================================= */
-
 label {
   display: block;
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 8px;
 }
-
-
-/* =========================================================
-   INPUTS
-========================================================= */
 
 input[type="text"],
 input[type="password"],
@@ -158,11 +117,6 @@ textarea {
   line-height: 1.5;
 }
 
-
-/* =========================================================
-   CHECKBOX
-========================================================= */
-
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -176,11 +130,6 @@ textarea {
   margin: 0;
 }
 
-
-/* =========================================================
-   FILE INPUT
-========================================================= */
-
 .file-input {
   width: 100%;
   background: #ffffff;
@@ -189,11 +138,6 @@ textarea {
   padding: 15px;
   font-size: 15px;
 }
-
-
-/* =========================================================
-   BUTTONS
-========================================================= */
 
 button {
   min-height: 52px;
@@ -234,11 +178,6 @@ button {
   color: #ffffff;
 }
 
-
-/* =========================================================
-   CUSTOM PROMPT
-========================================================= */
-
 .prompt-editor {
   display: none;
 }
@@ -249,11 +188,6 @@ button {
   line-height: 1.5;
   margin-top: 10px;
 }
-
-
-/* =========================================================
-   STATUS
-========================================================= */
 
 .status-card {
   display: none;
@@ -281,11 +215,6 @@ button {
   transition: width 0.25s ease;
 }
 
-
-/* =========================================================
-   RESULT
-========================================================= */
-
 .result-card {
   display: none;
 }
@@ -295,11 +224,6 @@ button {
   line-height: 1.5;
   margin-bottom: 15px;
 }
-
-
-/* =========================================================
-   MESSAGES
-========================================================= */
 
 .error {
   color: var(--danger);
@@ -311,25 +235,15 @@ button {
 .success {
   color: var(--success);
   font-weight: 700;
-  line-height: 1.5;
 }
-
-
-/* =========================================================
-   FOOTER
-========================================================= */
 
 .footer {
   text-align: center;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.7;
   margin-top: 30px;
 }
-
-
-/* =========================================================
-   TV / REMOTE CONTROL
-========================================================= */
 
 button:focus,
 input:focus,
@@ -359,262 +273,232 @@ textarea:focus {
   textarea {
     font-size: 18px;
   }
-
 }
-
 </style>
-
 </head>
-
 
 <body>
 
 <div class="app">
 
-
-<!-- =======================================================
-     HEADER
-======================================================= -->
-
-<div class="header">
-
-  <div class="logo">
-    ShitSub
+  <div class="header">
+    <div class="logo">ShitSub</div>
+    <div class="tagline">
+      English SRT → Natural Kerala Malayalam
+    </div>
   </div>
 
-  <div class="tagline">
-    English SRT → Natural Kerala Malayalam
-  </div>
 
-</div>
+  <!-- GEMINI API -->
 
+  <div class="card">
 
-<!-- =======================================================
-     GEMINI API
-======================================================= -->
+    <div class="section-title">
+      Gemini API Key
+    </div>
 
-<div class="card">
-
-  <div class="section-title">
-    Gemini API Key
-  </div>
-
-  <label for="apiKey">
-    API Key
-  </label>
-
-  <input
-    id="apiKey"
-    type="password"
-    placeholder="Enter your Gemini API key"
-    autocomplete="off"
-  >
-
-  <div class="checkbox-row">
+    <label for="apiKey">
+      API Key
+    </label>
 
     <input
-      id="rememberKey"
-      type="checkbox"
+      id="apiKey"
+      type="password"
+      placeholder="Enter your Gemini API key"
+      autocomplete="off"
     >
 
-    <label
-      for="rememberKey"
-      style="margin:0;"
-    >
-      Remember API key
-    </label>
+    <div class="checkbox-row">
 
-  </div>
+      <input
+        id="rememberKey"
+        type="checkbox"
+      >
 
-</div>
+      <label
+        for="rememberKey"
+        style="margin:0;"
+      >
+        Remember API key
+      </label>
 
-
-<!-- =======================================================
-     SRT FILE
-======================================================= -->
-
-<div class="card">
-
-  <div class="section-title">
-    Subtitle File
-  </div>
-
-  <label for="srtFile">
-    Select English SRT
-  </label>
-
-  <input
-    id="srtFile"
-    class="file-input"
-    type="file"
-    accept=".srt,text/plain"
-  >
-
-  <div
-    id="fileName"
-    class="prompt-info"
-  >
-    No file selected.
-  </div>
-
-</div>
-
-
-<!-- =======================================================
-     CUSTOM PROMPT
-======================================================= -->
-
-<div class="card">
-
-  <div class="section-title">
-    Custom Prompt
-  </div>
-
-
-  <!-- Closed by default -->
-
-  <button
-    id="editPromptBtn"
-    type="button"
-    class="secondary-btn"
-  >
-    Edit Prompt
-  </button>
-
-
-  <!-- Opens only after Edit Prompt -->
-
-  <div
-    id="promptEditor"
-    class="prompt-editor"
-  >
-
-    <label for="customPrompt">
-      Translation Prompt
-    </label>
-
-    <textarea
-      id="customPrompt"
-      placeholder="Enter your custom subtitle translation instructions..."
-    ></textarea>
-
-    <button
-      id="savePromptBtn"
-      type="button"
-      class="save-btn"
-    >
-      Save Prompt
-    </button>
-
-    <div class="prompt-info">
-      Your saved prompt will be remembered on this device.
     </div>
 
   </div>
 
-</div>
 
+  <!-- SRT FILE -->
 
-<!-- =======================================================
-     TRANSLATE
-======================================================= -->
+  <div class="card">
 
-<div class="card">
+    <div class="section-title">
+      Subtitle File
+    </div>
 
-  <button
-    id="translateBtn"
-    type="button"
-    class="primary-btn"
-  >
-    Translate SRT
-  </button>
+    <label for="srtFile">
+      Select English SRT
+    </label>
 
-  <div
-    id="mainError"
-    class="error"
-  ></div>
-
-</div>
-
-
-<!-- =======================================================
-     STATUS / PROGRESS
-======================================================= -->
-
-<div
-  id="statusCard"
-  class="card status-card"
->
-
-  <div class="section-title">
-    Translation Progress
-  </div>
-
-  <div
-    id="statusText"
-    class="status-text"
-  >
-    Preparing...
-  </div>
-
-  <div class="progress-container">
+    <input
+      id="srtFile"
+      class="file-input"
+      type="file"
+      accept=".srt,text/plain"
+    >
 
     <div
-      id="progressBar"
-      class="progress-bar"
+      id="fileName"
+      class="prompt-info"
+    >
+      No file selected.
+    </div>
+
+  </div>
+
+
+  <!-- CUSTOM PROMPT -->
+
+  <div class="card">
+
+    <div class="section-title">
+      Custom Prompt
+    </div>
+
+    <button
+      id="editPromptBtn"
+      type="button"
+      class="secondary-btn"
+    >
+      Edit Prompt
+    </button>
+
+
+    <div
+      id="promptEditor"
+      class="prompt-editor"
+    >
+
+      <label for="customPrompt">
+        Translation Prompt
+      </label>
+
+      <textarea
+        id="customPrompt"
+        placeholder="Enter your custom subtitle translation instructions..."
+      ></textarea>
+
+      <button
+        id="savePromptBtn"
+        type="button"
+        class="save-btn"
+      >
+        Save Prompt
+      </button>
+
+      <div class="prompt-info">
+        Your saved prompt will be remembered on this device.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- TRANSLATE -->
+
+  <div class="card">
+
+    <button
+      id="translateBtn"
+      type="button"
+      class="primary-btn"
+    >
+      Translate SRT
+    </button>
+
+    <div
+      id="mainError"
+      class="error"
     ></div>
 
   </div>
 
-</div>
 
-
-<!-- =======================================================
-     RESULT
-======================================================= -->
-
-<div
-  id="resultCard"
-  class="card result-card"
->
-
-  <div class="section-title">
-    Translation Complete
-  </div>
+  <!-- PROGRESS -->
 
   <div
-    id="resultInfo"
-    class="result-info"
-  ></div>
-
-  <button
-    id="downloadBtn"
-    type="button"
-    class="download-btn"
+    id="statusCard"
+    class="card status-card"
   >
-    Download Malayalam SRT
-  </button>
 
-</div>
+    <div class="section-title">
+      Translation Progress
+    </div>
+
+    <div
+      id="statusText"
+      class="status-text"
+    >
+      Preparing...
+    </div>
+
+    <div class="progress-container">
+
+      <div
+        id="progressBar"
+        class="progress-bar"
+      ></div>
+
+    </div>
+
+  </div>
 
 
-<!-- =======================================================
-     FOOTER
-======================================================= -->
+  <!-- RESULT -->
 
-<div class="footer">
-  ShitSub • English SRT → Colloquial Kerala Malayalam
-</div>
+  <div
+    id="resultCard"
+    class="card result-card"
+  >
 
+    <div class="section-title">
+      Translation Complete
+    </div>
+
+    <div
+      id="resultInfo"
+      class="result-info"
+    ></div>
+
+    <button
+      id="downloadBtn"
+      type="button"
+      class="download-btn"
+    >
+      Download Malayalam SRT
+    </button>
+
+  </div>
+
+
+  <!-- FOOTER -->
+
+  <div class="footer">
+
+    ShitSub • English SRT → Colloquial Kerala Malayalam
+    <br>
+    Created by Fadi
+
+  </div>
 
 </div>
 
 
 <script>
 
-/* =========================================================
-   CONFIGURATION
-========================================================= */
+/* ================================
+   GEMINI CONFIGURATION
+================================ */
 
 const MODEL = "gemini-3.5-flash-lite";
 
@@ -628,48 +512,34 @@ const API_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 
-/* =========================================================
+/* ================================
    DEFAULT TRANSLATION PROMPT
-========================================================= */
+================================ */
 
 const DEFAULT_PROMPT = `Translate English movie or TV subtitles into natural, colloquial Kerala Malayalam.
 
 IMPORTANT RULES:
 
 1. Use spoken Malayalam that people in Kerala naturally use in real conversations.
-
 2. Do NOT translate word-for-word.
-
 3. Do NOT use overly formal, literary, textbook, or old-fashioned Malayalam.
-
 4. Preserve the original meaning, emotion, attitude, humor, sarcasm, anger, fear, romance, insults, and personality.
-
 5. Keep the dialogue natural for the character and situation.
-
 6. English words commonly used in Kerala conversations may be kept when they sound natural.
-
 7. Do not unnecessarily convert every English technical or modern word into Malayalam.
-
 8. Preserve swear words, insults, slang, vulgar expressions, and offensive language when they are present and relevant to the original dialogue. Do not censor or soften them.
-
 9. Do not add explanations.
-
 10. Do not remove meaning.
-
 11. Do not summarize.
-
 12. Keep each subtitle reasonably short and natural for reading.
-
 13. Return only the translated dialogue.
-
 14. Do not change subtitle numbering or timestamps.
-
 15. The translation should sound like actual people speaking in Kerala, not like a machine translation.`;
 
 
-/* =========================================================
-   DOM
-========================================================= */
+/* ================================
+   ELEMENTS
+================================ */
 
 const apiKeyInput =
   document.getElementById("apiKey");
@@ -720,9 +590,9 @@ const downloadBtn =
   document.getElementById("downloadBtn");
 
 
-/* =========================================================
-   STATE
-========================================================= */
+/* ================================
+   VARIABLES
+================================ */
 
 let parsedSubtitles = [];
 
@@ -735,15 +605,19 @@ let outputName = "";
 let isTranslating = false;
 
 
-/* =========================================================
-   LOAD SAVED SETTINGS
-========================================================= */
+/* ================================
+   LOAD SAVED DATA
+================================ */
 
 const savedApiKey =
-  localStorage.getItem("shitsub_api_key");
+  localStorage.getItem(
+    "shitsub_api_key"
+  );
 
 const savedPrompt =
-  localStorage.getItem("shitsub_custom_prompt");
+  localStorage.getItem(
+    "shitsub_custom_prompt"
+  );
 
 
 if (savedApiKey) {
@@ -751,18 +625,20 @@ if (savedApiKey) {
   apiKeyInput.value =
     savedApiKey;
 
-  rememberKey.checked = true;
+  rememberKey.checked =
+    true;
 
 }
 
 
 customPrompt.value =
-  savedPrompt || DEFAULT_PROMPT;
+  savedPrompt ||
+  DEFAULT_PROMPT;
 
 
-/* =========================================================
-   REMEMBER API KEY
-========================================================= */
+/* ================================
+   API KEY MEMORY
+================================ */
 
 rememberKey.addEventListener(
   "change",
@@ -808,9 +684,9 @@ apiKeyInput.addEventListener(
 );
 
 
-/* =========================================================
-   CUSTOM PROMPT
-========================================================= */
+/* ================================
+   PROMPT EDITOR
+================================ */
 
 editPromptBtn.addEventListener(
   "click",
@@ -835,6 +711,7 @@ savePromptBtn.addEventListener(
     const prompt =
       customPrompt.value.trim();
 
+
     if (!prompt) {
 
       customPrompt.value =
@@ -842,10 +719,12 @@ savePromptBtn.addEventListener(
 
     }
 
+
     localStorage.setItem(
       "shitsub_custom_prompt",
       customPrompt.value
     );
+
 
     promptEditor.style.display =
       "none";
@@ -857,9 +736,9 @@ savePromptBtn.addEventListener(
 );
 
 
-/* =========================================================
-   FILE SELECTED
-========================================================= */
+/* ================================
+   FILE SELECTION
+================================ */
 
 srtFile.addEventListener(
   "change",
@@ -884,9 +763,9 @@ srtFile.addEventListener(
 );
 
 
-/* =========================================================
+/* ================================
    ERROR
-========================================================= */
+================================ */
 
 function showError(message) {
 
@@ -896,9 +775,9 @@ function showError(message) {
 }
 
 
-/* =========================================================
+/* ================================
    STATUS
-========================================================= */
+================================ */
 
 function setStatus(
   message,
@@ -907,6 +786,7 @@ function setStatus(
 
   statusText.textContent =
     message;
+
 
   if (percent !== null) {
 
@@ -918,61 +798,80 @@ function setStatus(
 }
 
 
-/* =========================================================
+/* ================================
    SRT PARSER
-========================================================= */
+================================ */
 
 function parseSRT(text) {
 
   text =
-    text.replace(/^\uFEFF/, "");
+    text.replace(
+      /^\uFEFF/,
+      ""
+    );
+
 
   text =
-    text.replace(/\r\n/g, "\n");
+    text.replace(
+      /\r\n/g,
+      "\n"
+    );
+
 
   text =
-    text.replace(/\r/g, "\n");
+    text.replace(
+      /\r/g,
+      "\n"
+    );
+
 
   const blocks =
     text
       .split(/\n\s*\n/)
-      .map(block => block.trim())
+      .map(
+        block => block.trim()
+      )
       .filter(Boolean);
 
+
   const subtitles = [];
+
 
   for (const block of blocks) {
 
     const lines =
       block.split("\n");
 
+
     if (lines.length < 3) {
       continue;
     }
 
+
     const number =
       lines[0].trim();
+
 
     const timestamp =
       lines[1].trim();
 
-    if (
-      !/^\d+$/.test(number)
-    ) {
+
+    if (!/^\d+$/.test(number)) {
       continue;
     }
 
-    if (
-      !timestamp.includes("-->")
-    ) {
+
+    if (!timestamp.includes("-->")) {
       continue;
     }
+
 
     const dialogue =
       lines
         .slice(2)
         .join("\n")
         .trim();
+
 
     subtitles.push({
 
@@ -986,13 +885,15 @@ function parseSRT(text) {
 
   }
 
+
   return subtitles;
+
 }
 
 
-/* =========================================================
+/* ================================
    BUILD SRT
-========================================================= */
+================================ */
 
 function buildSRT(subtitles) {
 
@@ -1000,32 +901,41 @@ function buildSRT(subtitles) {
     .map(subtitle => {
 
       return [
+
         subtitle.index,
+
         subtitle.timestamp,
+
         subtitle.text
+
       ].join("\n");
 
     })
     .join("\n\n");
+
 }
 
 
-/* =========================================================
-   WAIT
-========================================================= */
+/* ================================
+   DELAY
+================================ */
 
 function sleep(ms) {
 
   return new Promise(
-    resolve => setTimeout(resolve, ms)
+    resolve =>
+      setTimeout(
+        resolve,
+        ms
+      )
   );
 
 }
 
 
-/* =========================================================
-   GEMINI REQUEST
-========================================================= */
+/* ================================
+   GEMINI TRANSLATION
+================================ */
 
 async function translateBatch(
   batch,
@@ -1033,35 +943,30 @@ async function translateBatch(
   nextContext
 ) {
 
+
   const userPrompt = `You are translating subtitles from English into natural spoken Kerala Malayalam.
 
 CUSTOM TRANSLATION INSTRUCTIONS:
 
 ${customPrompt.value.trim() || DEFAULT_PROMPT}
 
-
 PREVIOUS SUBTITLE CONTEXT:
 
 ${previousContext}
 
-
 CURRENT SUBTITLES TO TRANSLATE:
 
-${batch
-  .map(item => {
+${batch.map(item => {
 
-    return `${item.index}
+  return `${item.index}
 ${item.timestamp}
 ${item.text}`;
 
-  })
-  .join("\n\n")}
-
+}).join("\n\n")}
 
 NEXT SUBTITLE CONTEXT:
 
 ${nextContext}
-
 
 OUTPUT REQUIREMENTS:
 
@@ -1111,12 +1016,14 @@ IMPORTANT:
 
     ],
 
+
     generationConfig: {
 
       temperature: 0.7,
 
       responseMimeType:
         "application/json",
+
 
       responseSchema: {
 
@@ -1139,8 +1046,11 @@ IMPORTANT:
           },
 
           required: [
+
             "index",
+
             "translation"
+
           ]
 
         }
@@ -1152,7 +1062,8 @@ IMPORTANT:
   };
 
 
-  let lastError = null;
+  let lastError =
+    null;
 
 
   for (
@@ -1163,22 +1074,32 @@ IMPORTANT:
 
     try {
 
+
       const response =
         await fetch(
-          `${API_URL}?key=${encodeURIComponent(apiKeyInput.value.trim())}`,
+
+          `${API_URL}?key=${encodeURIComponent(
+            apiKeyInput.value.trim()
+          )}`,
+
           {
 
             method: "POST",
 
             headers: {
+
               "Content-Type":
                 "application/json"
+
             },
 
             body:
-              JSON.stringify(requestBody)
+              JSON.stringify(
+                requestBody
+              )
 
           }
+
         );
 
 
@@ -1186,6 +1107,7 @@ IMPORTANT:
 
         const errorText =
           await response.text();
+
 
         throw new Error(
           `Gemini API error ${response.status}: ${errorText}`
@@ -1216,6 +1138,7 @@ IMPORTANT:
 
       let parsed;
 
+
       try {
 
         parsed =
@@ -1225,10 +1148,20 @@ IMPORTANT:
 
         const cleaned =
           text
-            .replace(/^```json\s*/i, "")
-            .replace(/^```\s*/i, "")
-            .replace(/\s*```$/i, "")
+            .replace(
+              /^```json\s*/i,
+              ""
+            )
+            .replace(
+              /^```\s*/i,
+              ""
+            )
+            .replace(
+              /\s*```$/i,
+              ""
+            )
             .trim();
+
 
         parsed =
           JSON.parse(cleaned);
@@ -1247,10 +1180,12 @@ IMPORTANT:
 
       return parsed;
 
+
     } catch (error) {
 
       lastError =
         error;
+
 
       if (
         attempt <
@@ -1260,6 +1195,7 @@ IMPORTANT:
         setStatus(
           `Retrying batch... (${attempt}/${MAX_RETRIES})`
         );
+
 
         await sleep(
           1500 * attempt
@@ -1272,21 +1208,24 @@ IMPORTANT:
   }
 
 
-  throw lastError ||
+  throw (
+    lastError ||
     new Error(
       "Translation failed."
-    );
+    )
+  );
 
 }
 
 
-/* =========================================================
-   TRANSLATE
-========================================================= */
+/* ================================
+   TRANSLATE BUTTON
+================================ */
 
 translateBtn.addEventListener(
   "click",
   async () => {
+
 
     if (isTranslating) {
       return;
@@ -1296,14 +1235,14 @@ translateBtn.addEventListener(
     mainError.textContent =
       "";
 
+
     resultCard.style.display =
       "none";
 
 
-    /* API KEY */
-
     const apiKey =
       apiKeyInput.value.trim();
+
 
     if (!apiKey) {
 
@@ -1312,10 +1251,9 @@ translateBtn.addEventListener(
       );
 
       return;
+
     }
 
-
-    /* FILE */
 
     if (
       !srtFile.files ||
@@ -1327,18 +1265,19 @@ translateBtn.addEventListener(
       );
 
       return;
+
     }
 
 
-    /* PROMPT */
-
     const prompt =
       customPrompt.value.trim();
+
 
     if (!prompt) {
 
       customPrompt.value =
         DEFAULT_PROMPT;
+
 
       localStorage.setItem(
         "shitsub_custom_prompt",
@@ -1347,8 +1286,6 @@ translateBtn.addEventListener(
 
     }
 
-
-    /* SAVE API KEY */
 
     if (rememberKey.checked) {
 
@@ -1363,8 +1300,10 @@ translateBtn.addEventListener(
     isTranslating =
       true;
 
+
     translateBtn.disabled =
       true;
+
 
     translateBtn.textContent =
       "Translating...";
@@ -1376,20 +1315,14 @@ translateBtn.addEventListener(
 
     try {
 
-      /* ==========================================
-         READ FILE
-      ========================================== */
 
       const file =
         srtFile.files[0];
 
+
       const text =
         await file.text();
 
-
-      /* ==========================================
-         PARSE
-      ========================================== */
 
       parsedSubtitles =
         parseSRT(text);
@@ -1415,15 +1348,13 @@ translateBtn.addEventListener(
       const total =
         parsedSubtitles.length;
 
+
       const totalBatches =
         Math.ceil(
-          total / BATCH_SIZE
+          total /
+          BATCH_SIZE
         );
 
-
-      /* ==========================================
-         BATCH TRANSLATION
-      ========================================== */
 
       for (
         let batchNumber = 0;
@@ -1431,13 +1362,16 @@ translateBtn.addEventListener(
         batchNumber++
       ) {
 
+
         const start =
           batchNumber *
           BATCH_SIZE;
 
+
         const end =
           Math.min(
-            start + BATCH_SIZE,
+            start +
+              BATCH_SIZE,
             total
           );
 
@@ -1452,14 +1386,16 @@ translateBtn.addEventListener(
         const contextStart =
           Math.max(
             0,
-            start - CONTEXT_COUNT
+            start -
+              CONTEXT_COUNT
           );
 
 
         const contextEnd =
           Math.min(
             total,
-            end + CONTEXT_COUNT
+            end +
+              CONTEXT_COUNT
           );
 
 
@@ -1469,8 +1405,9 @@ translateBtn.addEventListener(
               contextStart,
               start
             )
-            .map(item =>
-              `${item.index}: ${item.text}`
+            .map(
+              item =>
+                `${item.index}: ${item.text}`
             )
             .join("\n");
 
@@ -1481,17 +1418,22 @@ translateBtn.addEventListener(
               end,
               contextEnd
             )
-            .map(item =>
-              `${item.index}: ${item.text}`
+            .map(
+              item =>
+                `${item.index}: ${item.text}`
             )
             .join("\n");
 
 
         setStatus(
+
           `Translating subtitles ${start + 1}–${end} of ${total}...`,
+
           Math.round(
-            (start / total) * 100
+            (start / total) *
+              100
           )
+
         );
 
 
@@ -1502,10 +1444,6 @@ translateBtn.addEventListener(
             nextContext
           );
 
-
-        /* ==========================================
-           MAP TRANSLATIONS
-        ========================================== */
 
         const translationMap =
           new Map();
@@ -1518,12 +1456,18 @@ translateBtn.addEventListener(
           if (
             item &&
             item.index !== undefined &&
-            typeof item.translation === "string"
+            typeof item.translation ===
+              "string"
           ) {
 
             translationMap.set(
-              String(item.index),
+
+              String(
+                item.index
+              ),
+
               item.translation.trim()
+
             );
 
           }
@@ -1537,18 +1481,24 @@ translateBtn.addEventListener(
           i++
         ) {
 
+
           const original =
             batch[i];
 
+
           const translated =
             translationMap.get(
-              String(original.index)
+              String(
+                original.index
+              )
             );
 
 
           if (
-            translated !== undefined
+            translated !==
+            undefined
           ) {
+
 
             translatedSubtitles[
               start + i
@@ -1565,13 +1515,9 @@ translateBtn.addEventListener(
 
             };
 
+
           } else {
 
-            /*
-              If Gemini misses an item,
-              keep original dialogue rather
-              than destroying the SRT.
-            */
 
             translatedSubtitles[
               start + i
@@ -1594,17 +1540,16 @@ translateBtn.addEventListener(
 
 
         setStatus(
+
           `Completed ${end} of ${total} subtitles.`,
+
           Math.round(
-            (end / total) * 100
+            (end / total) *
+              100
           )
+
         );
 
-
-        /*
-          Small delay between batches to
-          reduce sudden API pressure.
-        */
 
         if (
           batchNumber <
@@ -1618,10 +1563,6 @@ translateBtn.addEventListener(
       }
 
 
-      /* ==========================================
-         BUILD OUTPUT
-      ========================================== */
-
       outputText =
         buildSRT(
           translatedSubtitles
@@ -1629,31 +1570,31 @@ translateBtn.addEventListener(
 
 
       const originalName =
-        file.name
-          .replace(
-            /\.srt$/i,
-            ""
-          );
+        file.name.replace(
+          /\.srt$/i,
+          ""
+        );
 
 
       outputName =
         `${originalName}_Malayalam.srt`;
 
 
-      /* ==========================================
-         COMPLETE
-      ========================================== */
-
       setStatus(
+
         `Translation complete: ${total} subtitles.`,
+
         100
+
       );
 
 
       resultInfo.innerHTML =
+
         `<div class="success">
           ${total} subtitles translated successfully.
         </div>
+
         <div style="margin-top:8px;">
           File: ${escapeHTML(outputName)}
         </div>`;
@@ -1663,36 +1604,53 @@ translateBtn.addEventListener(
         "block";
 
 
-      setTimeout(() => {
+      setTimeout(
+        () => {
 
-        resultCard.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
+          resultCard.scrollIntoView({
 
-      }, 200);
+            behavior:
+              "smooth",
+
+            block:
+              "center"
+
+          });
+
+        },
+        200
+      );
 
 
     } catch (error) {
 
+
       console.error(error);
 
+
       showError(
+
         error?.message ||
         "Translation failed."
+
       );
+
 
       setStatus(
         "Translation failed."
       );
 
+
     } finally {
+
 
       isTranslating =
         false;
 
+
       translateBtn.disabled =
         false;
+
 
       translateBtn.textContent =
         "Translate SRT";
@@ -1703,29 +1661,34 @@ translateBtn.addEventListener(
 );
 
 
-/* =========================================================
+/* ================================
    HTML ESCAPE
-========================================================= */
+================================ */
 
 function escapeHTML(value) {
 
   return String(value)
+
     .replace(
       /&/g,
       "&amp;"
     )
+
     .replace(
       /</g,
       "&lt;"
     )
+
     .replace(
       />/g,
       "&gt;"
     )
+
     .replace(
       /"/g,
       "&quot;"
     )
+
     .replace(
       /'/g,
       "&#039;"
@@ -1734,42 +1697,47 @@ function escapeHTML(value) {
 }
 
 
-/* =========================================================
-   DOWNLOAD
-========================================================= */
+/* ================================
+   DOWNLOAD SRT
+================================ */
 
 downloadBtn.addEventListener(
   "click",
   () => {
+
 
     if (!outputText) {
       return;
     }
 
 
-    /*
-      UTF-8 BOM helps some subtitle
-      players recognize Malayalam correctly.
-    */
-
     const textWithBom =
       "\uFEFF" +
       outputText;
 
 
-    /* ==========================================
-       ANDROID TV APK
-    ========================================== */
+    /*
+      ANDROID TV / APK
+      Native Android download
+    */
 
     if (
-      typeof AndroidDownload !== "undefined" &&
-      typeof AndroidDownload.saveSrt === "function"
+
+      typeof AndroidDownload !==
+        "undefined" &&
+
+      typeof AndroidDownload.saveSrt ===
+        "function"
+
     ) {
+
 
       try {
 
+
         const encoder =
           new TextEncoder();
+
 
         const bytes =
           encoder.encode(
@@ -1777,7 +1745,9 @@ downloadBtn.addEventListener(
           );
 
 
-        let binary = "";
+        let binary =
+          "";
+
 
         const chunkSize =
           0x8000;
@@ -1789,13 +1759,19 @@ downloadBtn.addEventListener(
           i += chunkSize
         ) {
 
+
           const chunk =
             bytes.subarray(
+
               i,
+
               Math.min(
-                i + chunkSize,
+                i +
+                  chunkSize,
+
                 bytes.length
               )
+
             );
 
 
@@ -1812,14 +1788,19 @@ downloadBtn.addEventListener(
 
 
         AndroidDownload.saveSrt(
+
           base64,
+
           outputName
+
         );
 
 
         return;
 
+
       } catch (error) {
+
 
         console.error(
           "Android download failed:",
@@ -1831,19 +1812,25 @@ downloadBtn.addEventListener(
     }
 
 
-    /* ==========================================
-       NORMAL BROWSER
-    ========================================== */
+    /*
+      BROWSER DOWNLOAD FALLBACK
+    */
 
     try {
 
+
       const blob =
         new Blob(
+
           [textWithBom],
+
           {
+
             type:
               "application/x-subrip;charset=utf-8"
+
           }
+
         );
 
 
@@ -1862,8 +1849,10 @@ downloadBtn.addEventListener(
       a.href =
         url;
 
+
       a.download =
         outputName;
+
 
       a.style.display =
         "none";
@@ -1882,9 +1871,11 @@ downloadBtn.addEventListener(
 
       setTimeout(
         () => {
+
           URL.revokeObjectURL(
             url
           );
+
         },
         1000
       );
@@ -1892,9 +1883,9 @@ downloadBtn.addEventListener(
 
     } catch (error) {
 
-      console.error(
-        error
-      );
+
+      console.error(error);
+
 
       showError(
         "Could not download the SRT file."
@@ -1906,25 +1897,26 @@ downloadBtn.addEventListener(
 );
 
 
-/* =========================================================
-   INITIAL UI
-========================================================= */
+/* ================================
+   INITIAL UI STATE
+================================ */
 
 promptEditor.style.display =
   "none";
 
+
 editPromptBtn.style.display =
   "block";
+
 
 statusCard.style.display =
   "none";
 
+
 resultCard.style.display =
   "none";
-
 
 </script>
 
 </body>
-
 </html>
