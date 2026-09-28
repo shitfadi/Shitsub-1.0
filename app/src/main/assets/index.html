@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#E50914">
+<title>ShitSub</title>
+<style>
+  :root{
+    color-scheme:light;
+    --red:#E50914;
+    --red-dark:#B00610;
+    --bg:#ffffff;
+    --card:#ffffff;
+    --text:#111111;
+    --muted:#767676;
+    --line:#e6e6e6;
+    --danger:#E50914;
+    --ok:#1a7a3c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text)}
+  .wrap{width:min(680px,100%);margin:0 auto;padding:28px 16px 40px}
+
+  .brand{display:flex;align-items:center;gap:10px;margin:0 0 22px}
+  .brand .mark{width:34px;height:34px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none}
+  .brand .name{font-weight:800;font-size:20px;letter-spacing:.2px;color:var(--text)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+  h1{font-size:22px;line-height:1.2;margin:0 0 7px;color:var(--text)}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px;line-height:1.45}
+  label{display:block;font-weight:600;font-size:14px;margin:15px 0 7px;color:var(--text)}
+
+  input[type=password],input[type=text]{width:100%;height:50px;border:1.5px solid var(--line);border-radius:10px;padding:0 14px;font-size:16px;outline:none;background:#fff;color:var(--text)}
+  textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px;outline:none;background:#fff;color:var(--text);font-family:inherit;resize:vertical;min-height:64px}
+  textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(229,9,20,.15)}
+  input:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(229,9,20,.15)}
+
+  /* Visible focus ring for D-pad / remote navigation on Google TV */
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible,
+  a:focus, button:focus {
+    outline:3px solid var(--red);
+    outline-offset:2px;
+    box-shadow:0 0 0 5px rgba(229,9,20,.18);
+  }
+
+  .row{display:flex;gap:10px;align-items:center}
+  button{width:100%;min-height:50px;border:0;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;padding:12px 16px;transition:transform .08s ease, background .15s ease}
+  .primary{background:var(--red);color:#fff}
+  .primary:hover,.primary:focus{background:var(--red-dark)}
+  .secondary{background:#fff;color:var(--text);border:1.5px solid var(--line)}
+  .secondary:hover,.secondary:focus{border-color:var(--red);color:var(--red)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button:active{transform:scale(.98)}
+
+  .filebox{border:1.5px dashed #d9d9d9;border-radius:12px;padding:14px;background:#fafafa}
+  .filename{font-size:14px;color:var(--muted);margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  input[type=file]{display:none}
+
+  .status{margin-top:18px;padding:13px 14px;border-radius:10px;background:#f7f7f7;font-size:14px;line-height:1.45;display:none;color:var(--text)}
+  .status.show{display:block}
+  .status.error{background:#fdeced;color:var(--danger)}
+  .status.ok{background:#eaf6ee;color:var(--ok)}
+  .progress{height:8px;background:#eee;border-radius:99px;overflow:hidden;margin-top:10px;display:none}
+  .bar{height:100%;width:0;background:var(--red);transition:width .2s}
+  .download{margin-top:12px;display:none}
+  .small{font-size:12px;color:var(--muted);margin-top:13px;line-height:1.45}
+  .small b{color:var(--text)}
+  .spinner{display:inline-block;width:13px;height:13px;border:2px solid #e2e2e2;border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(max-width:480px){.wrap{padding:14px 10px 28px}.card{padding:18px;border-radius:14px}h1{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="mark">S</span><span class="name">ShitSub</span></div>
+  <main class="card">
+    <h1>Malayalam SRT Translator</h1>
+    <p class="sub">English SRT → natural, colloquial Kerala Malayalam. The file and API key stay on this device.</p>
+
+    <label for="apiKey">Gemini API Key</label>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="Paste your Gemini API key">
+    <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:9px;font-size:13px;color:var(--muted)">
+      <input type="checkbox" id="rememberKey" style="width:auto;height:auto;margin:0">
+      Remember this key on this device
+    </label>
+
+    <label>English SRT file</label>
+    <div class="filebox">
+      <label for="srtFile" style="margin:0">
+        <button type="button" class="secondary" id="chooseBtn">Upload English SRT</button>
+      </label>
+      <input id="srtFile" type="file" accept=".srt,text/plain">
+      <div class="filename" id="fileName">No file selected</div>
+    </div>
+
+    <label for="customPrompt">Custom instructions <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+    <textarea id="customPrompt" placeholder="e.g. This is a period drama, keep dialogue slightly formal. Or: main character is from Thrissur, use that dialect."></textarea>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:400;margin-top:9px;font-size:13px;color:var(--muted)">
+      <input type="checkbox" id="rememberPrompt" style="width:auto;height:auto;margin:0">
+      Remember these instructions on this device
+    </label>
+
+    <div style="margin-top:14px">
+      <button id="translateBtn" class="primary" disabled>Translate to Malayalam</button>
+    </div>
+
+    <div id="status" class="status"></div>
+    <div id="progress" class="progress"><div id="bar" class="bar"></div></div>
+
+    <div class="download" id="downloadArea">
+      <button id="downloadBtn" class="primary">Download Malayalam SRT</button>
+    </div>
+
+    <div class="small">
+      Default model: <code id="modelName">gemini-3.5-flash-lite</code>. Change <code>MODEL</code> in the code if you want another Gemini model.
+      Your API key is sent directly from this browser to Google's Gemini API. It's only saved on this device, in this browser, if you check "Remember this key" above.
+    </div>
+    <div class="small" style="text-align:center;margin-top:20px">
+      <b>Created By Fadi</b>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+/* Change this model if needed. Gemini 3.5 Flash-Lite is the fastest/cheapest Gemini 3.5 variant, good for straightforward translation. */
+const MODEL = "gemini-3.5-flash-lite";
+
+/* Smaller batches are deliberately used for reliable JSON output and context handling. */
+const BATCH_SIZE = 75;
+const MAX_RETRIES = 3;
+const CONTEXT_COUNT = 4;
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+const apiKeyEl = document.getElementById("apiKey");
+const rememberKeyEl = document.getElementById("rememberKey");
+const customPromptEl = document.getElementById("customPrompt");
+const rememberPromptEl = document.getElementById("rememberPrompt");
+const fileEl = document.getElementById("srtFile");
+const chooseBtn = document.getElementById("chooseBtn");
+const fileNameEl = document.getElementById("fileName");
+const translateBtn = document.getElementById("translateBtn");
+const statusEl = document.getElementById("status");
+const progressEl = document.getElementById("progress");
+const barEl = document.getElementById("bar");
+const downloadArea = document.getElementById("downloadArea");
+const downloadBtn = document.getElementById("downloadBtn");
+document.getElementById("modelName").textContent = MODEL;
+
+const SAVED_KEY_STORAGE = "malayalamSrtTranslator_apiKey";
+const SAVED_PROMPT_STORAGE = "malayalamSrtTranslator_customPrompt";
+
+try {
+  const savedKey = localStorage.getItem(SAVED_KEY_STORAGE);
+  if (savedKey) {
+    apiKeyEl.value = savedKey;
+    rememberKeyEl.checked = true;
+  }
+  const savedPrompt = localStorage.getItem(SAVED_PROMPT_STORAGE);
+  if (savedPrompt) {
+    customPromptEl.value = savedPrompt;
+    rememberPromptEl.checked = true;
+  }
+} catch {}
+
+function persistKey() {
+  try {
+    if (rememberKeyEl.checked && apiKeyEl.value.trim()) {
+      localStorage.setItem(SAVED_KEY_STORAGE, apiKeyEl.value.trim());
+    } else {
+      localStorage.removeItem(SAVED_KEY_STORAGE);
+    }
+  } catch {}
+}
+
+function persistPrompt() {
+  try {
+    if (rememberPromptEl.checked && customPromptEl.value.trim()) {
+      localStorage.setItem(SAVED_PROMPT_STORAGE, customPromptEl.value.trim());
+    } else {
+      localStorage.removeItem(SAVED_PROMPT_STORAGE);
+    }
+  } catch {}
+}
+
+rememberKeyEl.addEventListener("change", persistKey);
+apiKeyEl.addEventListener("input", persistKey);
+rememberPromptEl.addEventListener("change", persistPrompt);
+customPromptEl.addEventListener("input", persistPrompt);
+
+let parsed = null;
+let outputText = null;
+let outputName = null;
+
+chooseBtn.addEventListener("click", () => fileEl.click());
+
+fileEl.addEventListener("change", async () => {
+  outputText = null;
+  downloadArea.style.display = "none";
+  parsed = null;
+  if (!fileEl.files.length) return;
+  const file = fileEl.files[0];
+  fileNameEl.textContent = file.name;
+  try {
+    const text = await file.text();
+    parsed = parseSRT(text);
+    setStatus(`Loaded ${parsed.blocks.length} subtitle blocks.`, "normal");
+    translateBtn.disabled = !apiKeyEl.value.trim();
+  } catch (e) {
+    setStatus(e.message || "Invalid SRT format.", "error");
+    translateBtn.disabled = true;
+  }
+});
+
+apiKeyEl.addEventListener("input", () => {
+  translateBtn.disabled = !(apiKeyEl.value.trim() && parsed);
+});
+
+function setStatus(message, type="normal", progress=null) {
+  statusEl.className = "status show" + (type === "error" ? " error" : type === "ok" ? " ok" : "");
+  statusEl.innerHTML = message;
+  if (progress !== null) {
+    progressEl.style.display = "block";
+    barEl.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  } else {
+    progressEl.style.display = "none";
+    barEl.style.width = "0%";
+  }
+}
+
+function parseSRT(text) {
+  /* Keep the source as closely as possible. Only the dialogue region is replaced later. */
+  const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const chunks = normalized.split(/\n{2,}/);
+  const blocks = [];
+  for (const raw of chunks) {
+    if (!raw.trim()) continue;
+    const lines = raw.split("\n");
+    if (lines.length < 2) throw new Error("Invalid SRT format: a subtitle block is missing its timestamp.");
+    const index = lines[0].trim();
+    const timeLine = lines[1];
+    if (!/^\d+$/.test(index)) throw new Error(`Invalid SRT index: ${index}`);
+    const tm = timeLine.match(/^(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})(.*)$/);
+    if (!tm) throw new Error(`Invalid SRT timestamp near subtitle ${index}.`);
+    const dialogueLines = lines.slice(2);
+    const dialogue = dialogueLines.join("\n");
+    blocks.push({
+      id: Number(index),
+      indexLine: lines[0],
+      timestampLine: lines[1],
+      dialogue,
+      original: raw,
+      blank: dialogue.trim() === ""
+    });
+  }
+  if (!blocks.length) throw new Error("The SRT file is empty.");
+  const ids = blocks.map(b => b.id);
+  if (new Set(ids).size !== ids.length) throw new Error("Invalid SRT: duplicate subtitle indexes.");
+  for (let i = 1; i < ids.length; i++) {
+    if (ids[i] !== ids[i-1] + 1) {
+      /* SRTs can technically use non-contiguous indexes, but exact reconstruction is safer. */
+      // Do not reject: the original indexes are preserved exactly.
+    }
+  }
+  return { blocks, newline: "\r\n" };
+}
+
+function stripForTranslation(text) {
+  /* Keep formatting tags in the string so Gemini can preserve them, but only dialogue is sent. */
+  return text.replace(/\n+/g, " ").replace(/[ \t]+/g, " ").trim();
+}
+
+function oneLine(text) {
+  return String(text ?? "").replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function buildPrompt(items, contextBefore, contextAfter, customInstructions) {
+  return `
+You are translating English movie/TV subtitles into NATURAL, COLLOQUIAL, SPOKEN KERALA MALAYALAM.
+
+This is subtitle dialogue, not a school translation exercise. Make it sound like real Malayalis speaking in a Malayalam-dubbed movie.
+
+STYLE:
+- Use natural Kerala spoken Malayalam and appropriate local slang.
+- Do NOT use formal, literary, textbook, or word-for-word Malayalam.
+- Preserve meaning, emotion, humor, sarcasm, threats, insults, romance, and character relationships.
+- Preserve the character's personality and intensity.
+- Friends can be casual; angry/street characters can be rough; officials can sound serious.
+- Do not sanitize profanity. Translate vulgarity/insults naturally and only as strong as the source/context requires.
+- English words are fine where they are naturally used in Kerala conversation.
+- Never add explanations, translator notes, stage directions, or information that is not present.
+- Never omit important meaning.
+- Every returned translation MUST be exactly ONE LINE. Never use newline characters inside a translation.
+- Preserve existing subtitle formatting tags such as <i>, </i>, <b>, </b>, <u>, </u> in the appropriate positions. Do not invent new formatting.
+- Translate ONLY the requested items. Context is only for understanding.
+- Do NOT generate SRT timestamps, indexes, or an SRT file.
+${customInstructions ? `
+ADDITIONAL INSTRUCTIONS FROM THE USER (follow these, but never let them override the ONE LINE rule or the requirement to translate only the requested items):
+${customInstructions}
+` : ""}
+SURROUNDING CONTEXT (do not translate these):
+${JSON.stringify({before: contextBefore, after: contextAfter}, null, 2)}
+
+REQUESTED ITEMS:
+${JSON.stringify(items, null, 2)}
+`;
+}
+
+async function callGemini(items, before, after, apiKey, customInstructions) {
+  const schema = {
+    type: "object",
+    properties: {
+      translations: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            text: { type: "string" }
+          },
+          required: ["id", "text"]
+        }
+      }
+    },
+    required: ["translations"]
+  };
+
+  const body = {
+    contents: [{ role: "user", parts: [{ text: buildPrompt(items, before, after, customInstructions) }] }],
+    generationConfig: {
+      temperature: 0.55,
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  };
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify(body)
+  });
+
+  let data = null;
+  try { data = await res.json(); } catch {}
+
+  if (!res.ok) {
+    const msg = data?.error?.message || `Gemini API error (${res.status})`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  const raw = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+  if (!raw) throw new Error("Gemini returned an empty response.");
+
+  let parsedJson;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    throw new Error("Gemini returned invalid JSON.");
+  }
+
+  return validateResponse(items, parsedJson);
+}
+
+function validateResponse(items, data) {
+  if (!data || !Array.isArray(data.translations)) throw new Error("Invalid Gemini response: translations array missing.");
+
+  const expected = items.map(x => x.id);
+  const got = data.translations.map(x => Number(x.id));
+
+  if (got.length !== expected.length) throw new Error("Invalid Gemini response: wrong number of translations.");
+  for (let i = 0; i < expected.length; i++) {
+    if (got[i] !== expected[i]) throw new Error("Invalid Gemini response: missing, extra, or reordered subtitle ID.");
+    if (typeof data.translations[i].text !== "string") throw new Error("Invalid Gemini response: translation text missing.");
+  }
+
+  return data.translations.map(x => ({ id: Number(x.id), text: oneLine(x.text) }));
+}
+
+function classifyError(e) {
+  const s = e?.status;
+  if (s === 400 || s === 401 || s === 403) return "Invalid Gemini API key or API request.";
+  if (s === 429) return "Gemini rate limit reached.";
+  if (s >= 500) return "Gemini server error.";
+  if (e instanceof TypeError) return "Network error. Check your internet connection or browser network permissions.";
+  return e?.message || "Translation failed.";
+}
+
+async function translateBatch(batch, startIndex, allBlocks, apiKey, customInstructions) {
+  const items = batch.filter(b => !b.blank).map(b => ({ id: b.id, text: stripForTranslation(b.dialogue) }));
+  if (!items.length) return [];
+
+  const before = allBlocks.slice(Math.max(0, startIndex - CONTEXT_COUNT), startIndex)
+    .filter(b => !b.blank)
+    .map(b => ({id:b.id, text:stripForTranslation(b.dialogue)}));
+  const after = allBlocks.slice(startIndex + batch.length, startIndex + batch.length + CONTEXT_COUNT)
+    .filter(b => !b.blank)
+    .map(b => ({id:b.id, text:stripForTranslation(b.dialogue)}));
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await callGemini(items, before, after, apiKey, customInstructions);
+    } catch (e) {
+      lastError = e;
+      if ([400,401,403].includes(e?.status)) throw e;
+      if (attempt < MAX_RETRIES) {
+        const wait = e?.status === 429 ? 2500 * attempt : 900 * attempt;
+        setStatus(`<span class="spinner"></span>Retrying batch (${attempt + 1}/${MAX_RETRIES})…`);
+        await sleep(wait);
+      }
+    }
+  }
+  throw lastError || new Error("Translation failed.");
+}
+
+translateBtn.addEventListener("click", async () => {
+  if (!parsed || !apiKeyEl.value.trim()) return;
+
+  translateBtn.disabled = true;
+  downloadArea.style.display = "none";
+  outputText = null;
+
+  const apiKey = apiKeyEl.value.trim();
+  const customInstructions = customPromptEl.value.trim();
+  const translations = new Map();
+
+  try {
+    const total = parsed.blocks.length;
+    setStatus(`<span class="spinner"></span>Starting translation…`, "normal", 0);
+
+    for (let start = 0; start < total; start += BATCH_SIZE) {
+      const batch = parsed.blocks.slice(start, Math.min(start + BATCH_SIZE, total));
+      const end = start + batch.length;
+      setStatus(`<span class="spinner"></span>Translating ${Math.min(end,total)} / ${total} subtitles…`, "normal", (start / total) * 100);
+
+      const result = await translateBatch(batch, start, parsed.blocks, apiKey, customInstructions);
+      for (const t of result) translations.set(t.id, t.text);
+
+      setStatus(`<span class="spinner"></span>Translating ${Math.min(end,total)} / ${total} subtitles…`, "normal", (end / total) * 100);
+    }
+
+    /* Rebuild from the original blocks. Gemini never gets to touch indexes/timestamps. */
+    const outputBlocks = parsed.blocks.map(b => {
+      if (b.blank) return `${b.indexLine}\r\n${b.timestampLine}\r\n`;
+      const translated = translations.get(b.id);
+      if (translated === undefined) throw new Error(`Missing translation for subtitle ${b.id}.`);
+      return `${b.indexLine}\r\n${b.timestampLine}\r\n${translated}`;
+    });
+
+    outputText = outputBlocks.join("\r\n\r\n") + "\r\n";
+    const base = fileEl.files[0].name.replace(/\.srt$/i, "");
+    outputName = `${base}_Malayalam.srt`;
+
+    setStatus("Translation complete ✓", "ok", 100);
+    downloadArea.style.display = "block";
+  } catch (e) {
+    setStatus(classifyError(e), "error");
+  } finally {
+    translateBtn.disabled = false;
+  }
+});
+
+downloadBtn.addEventListener("click", async () => {
+  if (!outputText) {
+    setStatus("Nothing to download yet.", "error");
+    return;
+  }
+
+  const content = "\uFEFF" + outputText;
+
+  // Standard browser download.
+  try {
+    const blob = new Blob([content], {type:"application/x-subrip;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = outputName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    // Keep the object URL alive long enough for Android/browser download handling.
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+    setStatus(`Download started: ${outputName}`, "ok");
+    return;
+  } catch (e) {
+    console.warn("Blob download failed:", e);
+  }
+
+  // Fallback for browsers/WebViews that do not support Blob downloads.
+  try {
+    const dataUrl =
+      "data:application/x-subrip;charset=utf-8," +
+      encodeURIComponent(content);
+
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = outputName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setStatus(`Download started: ${outputName}`, "ok");
+  } catch (e) {
+    console.error("Download failed:", e);
+    setStatus(
+      "This Android app's WebView does not allow HTML downloads. The APK needs native download handling.",
+      "error"
+    );
+  }
+});
+</script>
+</body>
+</html>
