@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ShitSub" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#E50914</item>
+        <item name="colorPrimaryDark">#B00610</item>
+        <item name="colorAccent">#E50914</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>
