@@ -2,19 +2,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- TV App Declaration -->
+    <!-- Android TV support -->
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
+
     <uses-feature
         android:name="android.software.leanback"
         android:required="true" />
 
-    <!-- Permissions -->
+    <!-- Internet access for Gemini API -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- Needed only for Android 9 and below when saving to Downloads -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -35,9 +39,15 @@
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+
             </intent-filter>
+
         </activity>
+
     </application>
+
 </manifest>
