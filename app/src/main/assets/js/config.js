@@ -3,26 +3,20 @@
    ========================================================= */
 
 const CONFIG = {
-    // Gemini Model
-    MODEL: "gemini-2.5-flash",
+    MODEL: "gemini-3.5-flash-lite",
 
-    // API Endpoint
-    API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
 
-    // Translation Settings
     CHUNK_SIZE: 25,
     MAX_PARALLEL: 15,
     MIN_PARALLEL: 3,
 
-    // Retry Settings
     MAX_RETRIES: 3,
     INITIAL_RETRY_DELAY: 1000,
     MAX_RETRY_DELAY: 10000,
 
-    // Progress Settings
     BATCH_DELAY: 300,
 
-    // LocalStorage Keys
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
         CUSTOM_PROMPT: "shitsub_custom_prompt",
