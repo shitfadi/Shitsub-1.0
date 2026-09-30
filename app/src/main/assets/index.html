@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#E50914">
+    <meta name="description" content="ShitSub - English to Malayalam SRT subtitle translator">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+    <title>ShitSub - SRT Translator</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="logo">ShitSub</div>
+            <div class="tagline">English SRT → Natural Kerala Malayalam</div>
+        </div>
+
+        <!-- GEMINI API -->
+        <div class="card">
+            <div class="section-title">Gemini API Key</div>
+            <label for="apiKey">API Key</label>
+            <input
+                id="apiKey"
+                type="password"
+                placeholder="Enter your Gemini API key"
+                autocomplete="off"
+            >
+            <div class="checkbox-row">
+                <input id="rememberKey" type="checkbox">
+                <label for="rememberKey" style="margin:0;">Remember API key</label>
+            </div>
+        </div>
+
+        <!-- SRT FILE -->
+        <div class="card">
+            <div class="section-title">Subtitle File</div>
+            <label for="srtFile">Select English SRT</label>
+            <input
+                id="srtFile"
+                class="file-input"
+                type="file"
+                accept=".srt,text/plain,application/x-subrip"
+            >
+            <div id="fileName" class="prompt-info">No file selected.</div>
+        </div>
+
+        <!-- CUSTOM PROMPT -->
+        <div class="card">
+            <div class="section-title">Custom Prompt</div>
+            <button id="editPromptBtn" type="button" class="secondary-btn">
+                Edit Prompt
+            </button>
+            <div id="promptEditor" class="prompt-editor">
+                <label for="customPrompt">Translation Prompt</label>
+                <textarea
+                    id="customPrompt"
+                    placeholder="Enter your custom subtitle translation instructions..."
+                ></textarea>
+                <button id="savePromptBtn" type="button" class="save-btn">
+                    Save Prompt
+                </button>
+                <div class="prompt-info">
+                    Your saved prompt will be remembered on this device.
+                </div>
+            </div>
+        </div>
+
+        <!-- TRANSLATE -->
+        <div class="card">
+            <button id="translateBtn" type="button" class="primary-btn">
+                Translate SRT
+            </button>
+            <div id="mainError" class="error"></div>
+        </div>
+
+        <!-- STATUS / PROGRESS -->
+        <div id="statusCard" class="card status-card">
+            <div class="section-title">Translation Progress</div>
+            <div id="statusText" class="status-text">Preparing...</div>
+            <div class="progress-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- RESULT -->
+        <div id="resultCard" class="card result-card">
+            <div class="section-title">Translation Complete</div>
+            <div id="resultInfo" class="result-info"></div>
+            <button id="downloadBtn" type="button" class="download-btn">
+                Download Malayalam SRT
+            </button>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            ShitSub • English SRT → Colloquial Kerala Malayalam
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/srt-parser.js"></script>
+    <script src="js/gemini-api.js"></script>
+    <script src="js/translator.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
