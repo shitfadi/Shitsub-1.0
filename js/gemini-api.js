@@ -5,9 +5,42 @@ const GeminiAPI = {
     currentParallelLimit: CONFIG.MAX_PARALLEL,
     retryDelay: CONFIG.INITIAL_RETRY_DELAY,
     /**
-     * Check whether the translation is still mostly/entirely English.
-     * This is intentionally conservative so normal English words
-     * used naturally inside Malayalam are not rejected.
+     * Detect whether text contains scripts that should NOT appear
+     * in a Kerala Malayalam translation.
+     *
+     * Malayalam:       U+0D00–U+0D7F
+     * Tamil:           U+0B80–U+0BFF
+     * Telugu:          U+0C00–U+0C7F
+     * Kannada:         U+0C80–U+0CFF
+     * Hindi/Devanagari:U+0900–U+097F
+     */
+    hasWrongLanguage(text) {
+        if (!text || !text.trim()) {
+            return true;
+        }
+        const tamil =
+            (text.match(/[\u0B80-\u0BFF]/g) || []).length;
+        const telugu =
+            (text.match(/[\u0C00-\u0C7F]/g) || []).length;
+        const kannada =
+            (text.match(/[\u0C80-\u0CFF]/g) || []).length;
+        const hindi =
+            (text.match(/[\u0900-\u097F]/g) || []).length;
+        if (
+            tamil > 0 ||
+            telugu > 0 ||
+            kannada > 0 ||
+            hindi > 0
+        ) {
+            return true;
+        }
+        return false;
+    },
+    /**
+     * Detect subtitles that Gemini accidentally left in English.
+     *
+     * This is intentionally conservative.
+     * Normal English words inside Malayalam are allowed.
      */
     looksUntranslated(original, translated) {
         if (!original || !translated) {
@@ -28,59 +61,35 @@ const GeminiAPI = {
         if (!cleanTranslated) {
             return true;
         }
-        // If the entire translated text is exactly the same as
-        // the original, Gemini clearly did not translate it.
+        // Exact same text means it was not translated.
         if (
             cleanOriginal.length > 0 &&
-            cleanTranslated.toLowerCase() === cleanOriginal.toLowerCase()
+            cleanTranslated.toLowerCase() ===
+                cleanOriginal.toLowerCase()
         ) {
             return true;
         }
-        // Detect whether the translated text contains Malayalam.
         const malayalamCount =
-            (cleanTranslated.match(/[\u0D00-\u0D7F]/g) || []).length;
-        // Count Latin letters.
+            (cleanTranslated.match(/[\u0D00-\u0D7F]/g) || [])
+                .length;
         const englishCount =
             (cleanTranslated.match(/[A-Za-z]/g) || []).length;
-        // Count all meaningful letters.
-        const totalLetterCount =
+        const totalLetters =
             (cleanTranslated.match(/\p{L}/gu) || []).length;
-        // If there is no Malayalam at all and the text is mostly
-        // Latin letters, treat it as untranslated English.
+        // No Malayalam + mostly Latin letters = probably
+        // untranslated English.
         if (
             malayalamCount === 0 &&
             englishCount > 0 &&
-            totalLetterCount > 0 &&
-            englishCount / totalLetterCount > 0.75
+            totalLetters > 0 &&
+            englishCount / totalLetters > 0.75
         ) {
             return true;
         }
         return false;
     },
     /**
-     * Detect scripts from other Indian languages.
-     *
-     * Malayalam naturally uses the Malayalam Unicode block.
-     * We reject Tamil, Telugu and Kannada scripts because these
-     * are common accidental outputs in Malayalam translation.
-     */
-    hasWrongLanguage(text) {
-        if (!text) {
-            return true;
-        }
-        const tamil =
-            (text.match(/[\u0B80-\u0BFF]/g) || []).length;
-        const telugu =
-            (text.match(/[\u0C00-\u0C7F]/g) || []).length;
-        const kannada =
-            (text.match(/[\u0C80-\u0CFF]/g) || []).length;
-        if (tamil > 0 || telugu > 0 || kannada > 0) {
-            return true;
-        }
-        return false;
-    },
-    /**
-     * Check whether a translation is acceptable.
+     * Complete translation validation.
      */
     isTranslationValid(original, translated) {
         if (!translated || !translated.trim()) {
@@ -89,108 +98,249 @@ const GeminiAPI = {
         if (this.hasWrongLanguage(translated)) {
             return false;
         }
-        if (this.looksUntranslated(original, translated)) {
+        if (
+            this.looksUntranslated(
+                original,
+                translated
+            )
+        ) {
             return false;
         }
         return true;
     },
     /**
-     * Translate one individual subtitle.
+     * Build the JSON schema dynamically.
      *
-     * This is used ONLY when the normal chunk translation produces
-     * an untranslated or wrong-language subtitle.
+     * The number of translations is tied to the number of
+     * subtitles in the current request.
      *
-     * Normal subtitles do not use this extra request.
+     * This removes the fragile ~~~~ separator system.
      */
-    async translateSingleSubtitle(subtitle, apiKey, customPrompt) {
-        const protectedText = SRTParser.protectFormatting(subtitle.text);
+    buildBatchSchema(count) {
+        return {
+            type: "object",
+            properties: {
+                translations: {
+                    type: "array",
+                    description:
+                        `Exactly ${count} translations, in exactly the same order as the input subtitles.`,
+                    minItems: count,
+                    maxItems: count,
+                    items: {
+                        type: "string"
+                    }
+                }
+            },
+            required: ["translations"],
+            additionalProperties: false
+        };
+    },
+    /**
+     * Schema for translating one subtitle.
+     */
+    buildSingleSchema() {
+        return {
+            type: "object",
+            properties: {
+                translation: {
+                    type: "string",
+                    description:
+                        "The translated subtitle in natural spoken Kerala Malayalam."
+                }
+            },
+            required: ["translation"],
+            additionalProperties: false
+        };
+    },
+    /**
+     * Safely extract JSON from Gemini's response.
+     */
+    parseJsonResponse(text) {
+        if (!text) {
+            throw new Error(
+                "Empty response from Gemini"
+            );
+        }
+        let cleaned = text.trim();
+        // Remove accidental markdown code fences if present.
+        cleaned = cleaned
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .trim();
+        try {
+            return JSON.parse(cleaned);
+        } catch (error) {
+            throw new Error(
+                "Invalid JSON response from Gemini"
+            );
+        }
+    },
+    /**
+     * Clean common Gemini prefixes from a translation.
+     */
+    cleanTranslation(text) {
+        if (!text) {
+            return "";
+        }
+        return text
+            .trim()
+            .replace(
+                /^(Here's the translation:|Translation:|Malayalam:|സ്വാഗതം:)\s*/i,
+                ""
+            )
+            .trim();
+    },
+    /**
+     * Translate ONE subtitle.
+     *
+     * This is only used when the normal batch result contains
+     * a subtitle that fails validation.
+     */
+    async translateSingleSubtitle(
+        subtitle,
+        apiKey,
+        customPrompt
+    ) {
+        const protectedText =
+            SRTParser.protectFormatting(
+                subtitle.text
+            );
         const prompt = `${customPrompt}
-IMPORTANT:
-This is a correction request for ONE subtitle.
+IMPORTANT APPLICATION REQUIREMENTS:
+You are translating ONE subtitle for ShitSub.
 Translate the subtitle into natural, colloquial Kerala Malayalam.
-STRICT REQUIREMENTS:
-- The original subtitle MUST be translated.
-- Do NOT leave a complete English sentence unchanged.
-- Do NOT output Tamil.
-- Do NOT output Telugu.
-- Do NOT output Kannada.
-- Use natural spoken Kerala Malayalam.
-- Preserve the exact meaning, emotion, attitude, humor, sarcasm, insults and profanity.
-- Preserve <i>, <b>, <u> and other formatting tags.
+STRICT LANGUAGE RULES:
+- The final translation must be Malayalam.
+- NEVER output Tamil.
+- NEVER output Telugu.
+- NEVER output Kannada.
+- NEVER output Hindi or Devanagari.
+- Do not use another Indian language.
+- English words are allowed only when they are naturally used in Kerala Malayalam or are names, brands, places, acronyms, technical terms, etc.
+- A complete English sentence MUST be translated.
+STRICT SUBTITLE RULES:
+- Preserve the exact meaning.
+- Preserve emotion, sarcasm, humor, anger, fear, romance, insults and profanity.
+- Do not censor.
+- Do not summarize.
+- Do not explain.
+- Preserve formatting tags such as <i>, <b>, <u>.
 - Preserve ||| for multi-line subtitles.
-- Do not add explanations.
-- Do not add numbering.
-- Return ONLY the translated subtitle.
+- Return only the translation inside the required JSON field.
+IMPORTANT:
+The application requires JSON output.
+Do NOT use ~~~~ separators.
+Do NOT add markdown.
+Do NOT add explanations.
 SUBTITLE:
 ${protectedText}`;
         const requestBody = {
-            contents: [{
-                role: "user",
-                parts: [{ text: prompt }]
-            }],
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        {
+                            text: prompt
+                        }
+                    ]
+                }
+            ],
             generationConfig: {
                 temperature: 0.3,
                 maxOutputTokens: 512,
                 topP: 0.95,
-                topK: 40
+                topK: 40,
+                responseMimeType:
+                    "application/json",
+                responseSchema:
+                    this.buildSingleSchema()
             },
             safetySettings: [
                 {
-                    category: "HARM_CATEGORY_HARASSMENT",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_HARASSMENT",
+                    threshold:
+                        "BLOCK_NONE"
                 },
                 {
-                    category: "HARM_CATEGORY_HATE_SPEECH",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_HATE_SPEECH",
+                    threshold:
+                        "BLOCK_NONE"
                 },
                 {
-                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold:
+                        "BLOCK_NONE"
                 },
                 {
-                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold:
+                        "BLOCK_NONE"
                 }
             ]
         };
         let lastError = null;
-        for (let attempt = 1; attempt <= CONFIG.MAX_RETRIES; attempt++) {
+        for (
+            let attempt = 1;
+            attempt <= CONFIG.MAX_RETRIES;
+            attempt++
+        ) {
             try {
                 const response = await fetch(
                     `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
                     {
                         method: "POST",
                         headers: {
-                            "Content-Type": "application/json"
+                            "Content-Type":
+                                "application/json"
                         },
-                        body: JSON.stringify(requestBody)
+                        body: JSON.stringify(
+                            requestBody
+                        )
                     }
                 );
                 if (!response.ok) {
-                    if (response.status === 429) {
-                        throw new Error("RATE_LIMIT");
+                    if (
+                        response.status === 429
+                    ) {
+                        throw new Error(
+                            "RATE_LIMIT"
+                        );
                     }
-                    const errorText = await response.text();
+                    const errorText =
+                        await response.text();
                     throw new Error(
                         `API error ${response.status}: ${errorText}`
                     );
                 }
-                const data = await response.json();
+                const data =
+                    await response.json();
                 const text =
-                    data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!text) {
-                    throw new Error("Empty response from Gemini");
+                    data?.candidates?.[0]
+                        ?.content?.parts?.[0]?.text;
+                const parsed =
+                    this.parseJsonResponse(text);
+                if (
+                    !parsed ||
+                    typeof parsed.translation !==
+                        "string"
+                ) {
+                    throw new Error(
+                        "Invalid structured translation response"
+                    );
                 }
-                let translated = text
-                    .trim()
-                    .replace(
-                        /^(Here's the translation:|Translation:|Malayalam:|സ്വാഗതം:)\s*/i,
-                        ""
-                    )
-                    .trim();
+                const cleaned =
+                    this.cleanTranslation(
+                        parsed.translation
+                    );
                 const restored =
-                    SRTParser.restoreFormatting(translated);
-                // First check the SRT structure.
+                    SRTParser.restoreFormatting(
+                        cleaned
+                    );
                 if (
                     !SRTParser.validate(
                         subtitle.text,
@@ -198,10 +348,9 @@ ${protectedText}`;
                     )
                 ) {
                     throw new Error(
-                        `Validation failed for subtitle ${subtitle.index}`
+                        `SRT validation failed for subtitle ${subtitle.index}`
                     );
                 }
-                // Then check language.
                 if (
                     !this.isTranslationValid(
                         subtitle.text,
@@ -218,16 +367,25 @@ ${protectedText}`;
                 };
             } catch (error) {
                 lastError = error;
-                // Rate limit gets handled by the main throttling system.
-                if (error.message === "RATE_LIMIT") {
+                if (
+                    error.message ===
+                    "RATE_LIMIT"
+                ) {
                     throw error;
                 }
-                if (attempt < CONFIG.MAX_RETRIES) {
-                    const delay = Math.min(
-                        CONFIG.INITIAL_RETRY_DELAY *
-                            Math.pow(2, attempt - 1),
-                        CONFIG.MAX_RETRY_DELAY
-                    );
+                if (
+                    attempt <
+                    CONFIG.MAX_RETRIES
+                ) {
+                    const delay =
+                        Math.min(
+                            CONFIG.INITIAL_RETRY_DELAY *
+                                Math.pow(
+                                    2,
+                                    attempt - 1
+                                ),
+                            CONFIG.MAX_RETRY_DELAY
+                        );
                     await this.sleep(delay);
                 }
             }
@@ -240,73 +398,130 @@ ${protectedText}`;
         );
     },
     /**
-     * Translate a chunk of subtitles via Gemini API
-     * @param {Array} chunk - Array of subtitle objects
-     * @param {string} apiKey - Gemini API key
-     * @param {string} customPrompt - Custom translation prompt
-     * @returns {Promise<Array>} Translated subtitles
+     * Translate a chunk of subtitles.
      */
-    async translateChunk(chunk, apiKey, customPrompt) {
-        // Skip empty subtitles
+    async translateChunk(
+        chunk,
+        apiKey,
+        customPrompt
+    ) {
         const nonEmptyIndices = [];
         const textsToTranslate = [];
-        chunk.forEach((sub, idx) => {
-            if (!sub.isEmpty) {
-                nonEmptyIndices.push(idx);
-                // Protect formatting before sending
-                const protectedText =
-                    SRTParser.protectFormatting(sub.text);
-                textsToTranslate.push(protectedText);
+        chunk.forEach(
+            (sub, idx) => {
+                if (!sub.isEmpty) {
+                    nonEmptyIndices.push(idx);
+                    const protectedText =
+                        SRTParser.protectFormatting(
+                            sub.text
+                        );
+                    textsToTranslate.push(
+                        protectedText
+                    );
+                }
             }
-        });
-        // If all empty, return as-is
-        if (textsToTranslate.length === 0) {
+        );
+        // If everything is empty, return unchanged.
+        if (
+            textsToTranslate.length === 0
+        ) {
             return chunk;
         }
-        // Build prompt
+        const expectedCount =
+            textsToTranslate.length;
+        /*
+         * IMPORTANT:
+         *
+         * We now use JSON instead of ~~~~.
+         * Gemini is required to return exactly
+         * expectedCount translation strings.
+         */
         const prompt = `${customPrompt}
-SUBTITLES TO TRANSLATE (one per subtitle, separated by ~~~~):
-${textsToTranslate.join('\n~~~~\n')}
-IMPORTANT:
-- Translate EVERY subtitle separately.
-- Return exactly ONE translation for every subtitle.
-- Preserve the exact order.
-- Preserve ||| separator for multi-line subtitles.
-- Preserve formatting tags.
-- Do not skip any subtitle.
-- Do not merge subtitles.
-- Do not summarize.
-- Do not add explanations or numbering.
-- Use natural spoken Kerala Malayalam.
-- Do not output Tamil, Telugu, Kannada or other Indian languages.
-- Complete English sentences must not remain untranslated.`;
+SHITSUB TRANSLATION TASK
+Translate EVERY subtitle below into natural, colloquial Kerala Malayalam.
+IMPORTANT APPLICATION RULES:
+1. Translate every subtitle.
+2. Return exactly ${expectedCount} translations.
+3. Keep the exact same order.
+4. NEVER skip a subtitle.
+5. NEVER merge subtitles.
+6. NEVER summarize subtitles.
+7. NEVER return the original English sentence unchanged.
+8. Do not output Tamil.
+9. Do not output Telugu.
+10. Do not output Kannada.
+11. Do not output Hindi or Devanagari.
+12. Do not output another Indian language.
+13. Natural English words inside Malayalam are allowed when appropriate.
+14. Preserve the original meaning and emotion.
+15. Preserve slang, insults, profanity, sarcasm and humor.
+16. Preserve <i>, <b>, <u> and other formatting tags.
+17. Preserve ||| for multi-line subtitles.
+18. Do not add explanations.
+19. Do not add numbering.
+20. Do not use ~~~~ as a separator.
+The application requires JSON output according to the supplied schema.
+SUBTITLES:
+${textsToTranslate
+    .map(
+        (text, index) =>
+            `SUBTITLE ${index + 1}:\n${text}`
+    )
+    .join("\n\n")}`;
         const requestBody = {
-            contents: [{
-                role: "user",
-                parts: [{ text: prompt }]
-            }],
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        {
+                            text: prompt
+                        }
+                    ]
+                }
+            ],
             generationConfig: {
                 temperature: 0.3,
-                maxOutputTokens: 2048,
+                /*
+                 * 4096 gives the model enough room for
+                 * larger 25-subtitle batches and JSON.
+                 */
+                maxOutputTokens: 4096,
                 topP: 0.95,
-                topK: 40
+                topK: 40,
+                /*
+                 * Structured JSON output.
+                 */
+                responseMimeType:
+                    "application/json",
+                responseSchema:
+                    this.buildBatchSchema(
+                        expectedCount
+                    )
             },
             safetySettings: [
                 {
-                    category: "HARM_CATEGORY_HARASSMENT",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_HARASSMENT",
+                    threshold:
+                        "BLOCK_NONE"
                 },
                 {
-                    category: "HARM_CATEGORY_HATE_SPEECH",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_HATE_SPEECH",
+                    threshold:
+                        "BLOCK_NONE"
                 },
                 {
-                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold:
+                        "BLOCK_NONE"
                 },
                 {
-                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold: "BLOCK_NONE"
+                    category:
+                        "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold:
+                        "BLOCK_NONE"
                 }
             ]
         };
@@ -322,95 +537,121 @@ IMPORTANT:
                     {
                         method: "POST",
                         headers: {
-                            "Content-Type": "application/json"
+                            "Content-Type":
+                                "application/json"
                         },
-                        body: JSON.stringify(requestBody)
+                        body: JSON.stringify(
+                            requestBody
+                        )
                     }
                 );
                 if (!response.ok) {
-                    if (response.status === 429) {
-                        throw new Error("RATE_LIMIT");
+                    if (
+                        response.status === 429
+                    ) {
+                        throw new Error(
+                            "RATE_LIMIT"
+                        );
                     }
-                    const errorText = await response.text();
+                    const errorText =
+                        await response.text();
                     throw new Error(
                         `API error ${response.status}: ${errorText}`
                     );
                 }
-                const data = await response.json();
+                const data =
+                    await response.json();
                 const text =
-                    data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!text) {
-                    throw new Error(
-                        "Empty response from Gemini"
-                    );
-                }
-                // Parse translations
-                const translations = text
-                    .split("~~~~")
-                    .map(t => t.trim())
-                    .map(t => {
-                        return t
-                            .replace(
-                                /^(Here's the translation:|Translation:|Malayalam:|സ്വാഗതം:)\s*/i,
-                                ""
-                            )
-                            .trim();
-                    })
-                    .filter(t => t.length > 0);
-                // IMPORTANT:
-                // Never pad missing translations with the original
-                // English text. That was one of the reasons English
-                // subtitles could silently remain in the result.
+                    data?.candidates?.[0]
+                        ?.content?.parts?.[0]?.text;
+                const parsed =
+                    this.parseJsonResponse(text);
                 if (
-                    translations.length !==
-                    textsToTranslate.length
+                    !parsed ||
+                    !Array.isArray(
+                        parsed.translations
+                    )
                 ) {
                     throw new Error(
-                        `TRANSLATION_COUNT_MISMATCH: expected ${textsToTranslate.length}, got ${translations.length}`
+                        "Invalid structured response: translations array missing"
                     );
                 }
-                // Map translations back to chunk
+                /*
+                 * The schema should enforce this, but we
+                 * still validate locally.
+                 */
+                if (
+                    parsed.translations.length !==
+                    expectedCount
+                ) {
+                    throw new Error(
+                        `TRANSLATION_COUNT_MISMATCH: expected ${expectedCount}, got ${parsed.translations.length}`
+                    );
+                }
                 const result = [...chunk];
                 const invalidSubtitles = [];
-                nonEmptyIndices.forEach((idx, i) => {
-                    const restored =
-                        SRTParser.restoreFormatting(
-                            translations[i]
-                        );
-                    // Validate structure AND language.
-                    const structureValid =
-                        SRTParser.validate(
-                            chunk[idx].text,
-                            restored
-                        );
-                    const languageValid =
-                        this.isTranslationValid(
-                            chunk[idx].text,
-                            restored
-                        );
-                    if (
-                        structureValid &&
-                        languageValid
-                    ) {
-                        result[idx] = {
-                            ...chunk[idx],
-                            text: restored
-                        };
-                    } else {
-                        // Do not silently keep the English text.
-                        // Mark it for individual correction.
-                        invalidSubtitles.push(idx);
-                        console.warn(
-                            `⚠️ Translation validation failed for subtitle ${chunk[idx].index}`
-                        );
+                /*
+                 * Validate every returned translation.
+                 */
+                nonEmptyIndices.forEach(
+                    (idx, i) => {
+                        const rawTranslation =
+                            parsed.translations[i];
+                        if (
+                            typeof rawTranslation !==
+                            "string"
+                        ) {
+                            invalidSubtitles.push(
+                                idx
+                            );
+                            return;
+                        }
+                        const cleaned =
+                            this.cleanTranslation(
+                                rawTranslation
+                            );
+                        const restored =
+                            SRTParser.restoreFormatting(
+                                cleaned
+                            );
+                        const structureValid =
+                            SRTParser.validate(
+                                chunk[idx].text,
+                                restored
+                            );
+                        const languageValid =
+                            this.isTranslationValid(
+                                chunk[idx].text,
+                                restored
+                            );
+                        if (
+                            structureValid &&
+                            languageValid
+                        ) {
+                            result[idx] = {
+                                ...chunk[idx],
+                                text: restored
+                            };
+                        } else {
+                            invalidSubtitles.push(
+                                idx
+                            );
+                            console.warn(
+                                `⚠️ Translation validation failed for subtitle ${chunk[idx].index}`
+                            );
+                        }
                     }
-                });
-                // Retry ONLY the invalid subtitles.
-                //
-                // This means normal translations keep their original
-                // speed. Only problematic subtitles make an additional
-                // Gemini request.
-                for (const idx of invalidSubtitles) {
+                );
+                /*
+                 * Retry ONLY invalid subtitles.
+                 *
+                 * Normal translations require no additional
+                 * API request.
+                 */
+                for (
+                    const idx of
+                    invalidSubtitles
+                ) {
                     try {
                         const corrected =
                             await this.translateSingleSubtitle(
@@ -418,41 +659,53 @@ IMPORTANT:
                                 apiKey,
                                 customPrompt
                             );
-                        result[idx] = corrected;
+                        result[idx] =
+                            corrected;
                     } catch (error) {
-                        // Rate limits must reach the main throttling
-                        // system.
                         if (
                             error.message ===
                             "RATE_LIMIT"
                         ) {
                             throw error;
                         }
-                        console.warn(
-                            `⚠️ Could not correct subtitle ${chunk[idx].index}:`,
-                            error.message
+                        /*
+                         * Do NOT silently put the original
+                         * English back.
+                         *
+                         * Failing loudly is safer because
+                         * ShitSub promises complete translation.
+                         */
+                        throw new Error(
+                            `Subtitle ${chunk[idx].index} could not be translated correctly after retries. ${error.message}`
                         );
-                        // Keep the original only if Gemini completely
-                        // fails to produce a valid replacement.
-                        //
-                        // This avoids corrupting the SRT structure.
-                        result[idx] = {
-                            ...chunk[idx]
-                        };
                     }
                 }
                 return result;
             } catch (error) {
                 lastError = error;
-                if (error.message === "RATE_LIMIT") {
+                if (
+                    error.message ===
+                    "RATE_LIMIT"
+                ) {
                     throw error;
                 }
-                if (attempt < CONFIG.MAX_RETRIES) {
-                    const delay = Math.min(
-                        CONFIG.INITIAL_RETRY_DELAY *
-                            Math.pow(2, attempt - 1),
-                        CONFIG.MAX_RETRY_DELAY
-                    );
+                console.warn(
+                    `⚠️ Gemini batch attempt ${attempt}/${CONFIG.MAX_RETRIES} failed:`,
+                    error.message
+                );
+                if (
+                    attempt <
+                    CONFIG.MAX_RETRIES
+                ) {
+                    const delay =
+                        Math.min(
+                            CONFIG.INITIAL_RETRY_DELAY *
+                                Math.pow(
+                                    2,
+                                    attempt - 1
+                                ),
+                            CONFIG.MAX_RETRY_DELAY
+                        );
                     await this.sleep(delay);
                 }
             }
@@ -465,12 +718,7 @@ IMPORTANT:
         );
     },
     /**
-     * Translate with automatic throttling
-     * @param {Array} chunks - Array of subtitle chunks
-     * @param {string} apiKey - Gemini API key
-     * @param {string} customPrompt - Custom translation prompt
-     * @param {Function} onProgress - Progress callback
-     * @returns {Promise<Array>} All translated subtitles
+     * Translate with automatic throttling.
      */
     async translateWithThrottling(
         chunks,
@@ -478,45 +726,67 @@ IMPORTANT:
         customPrompt,
         onProgress
     ) {
-        const results = new Array(chunks.length);
+        const results =
+            new Array(chunks.length);
         let completed = 0;
         for (
             let i = 0;
             i < chunks.length;
             i += this.currentParallelLimit
         ) {
-            const batch = chunks.slice(
-                i,
-                i + this.currentParallelLimit
-            );
-            const batchIndices = Array.from(
-                { length: batch.length },
-                (_, idx) => i + idx
-            );
-            try {
-                // Process batch in parallel
-                const batchResults = await Promise.all(
-                    batch.map(chunk =>
-                        this.translateChunk(
-                            chunk,
-                            apiKey,
-                            customPrompt
-                        )
-                    )
+            const batch =
+                chunks.slice(
+                    i,
+                    i +
+                        this.currentParallelLimit
                 );
-                // Store results
-                batchResults.forEach((result, idx) => {
-                    results[batchIndices[idx]] = result;
-                });
-                completed += batch.length;
-                // Report progress
+            const batchIndices =
+                Array.from(
+                    {
+                        length:
+                            batch.length
+                    },
+                    (_, idx) =>
+                        i + idx
+                );
+            try {
+                /*
+                 * Process chunks in parallel.
+                 *
+                 * This part remains the same as your
+                 * original system, so normal translation
+                 * speed is preserved.
+                 */
+                const batchResults =
+                    await Promise.all(
+                        batch.map(
+                            chunk =>
+                                this.translateChunk(
+                                    chunk,
+                                    apiKey,
+                                    customPrompt
+                                )
+                        )
+                    );
+                batchResults.forEach(
+                    (result, idx) => {
+                        results[
+                            batchIndices[idx]
+                        ] = result;
+                    }
+                );
+                completed +=
+                    batch.length;
                 if (onProgress) {
                     onProgress(
                         completed,
                         chunks.length
                     );
                 }
-                // Success - gradually increase speed
+                /*
+                 * Gradually increase parallel speed
+                 * after successful batches.
+                 */
                 if (
                     this.currentParallelLimit <
                     CONFIG.MAX_PARALLEL
@@ -524,7 +794,8 @@ IMPORTANT:
                     this.currentParallelLimit =
                         Math.min(
                             CONFIG.MAX_PARALLEL,
-                            this.currentParallelLimit + 2
+                            this.currentParallelLimit +
+                                2
                         );
                 }
                 if (
@@ -537,9 +808,12 @@ IMPORTANT:
                             this.retryDelay - 200
                         );
                 }
-                // Small delay between batches
+                /*
+                 * Small delay between batches.
+                 */
                 if (
-                    i + this.currentParallelLimit <
+                    i +
+                        this.currentParallelLimit <
                     chunks.length
                 ) {
                     await this.sleep(
@@ -548,14 +822,18 @@ IMPORTANT:
                 }
             } catch (error) {
                 if (
-                    error.message === "RATE_LIMIT"
+                    error.message ===
+                    "RATE_LIMIT"
                 ) {
-                    // Throttle down
+                    /*
+                     * Reduce parallel requests.
+                     */
                     this.currentParallelLimit =
                         Math.max(
                             CONFIG.MIN_PARALLEL,
                             Math.floor(
-                                this.currentParallelLimit / 2
+                                this.currentParallelLimit /
+                                    2
                             )
                         );
                     this.retryDelay =
@@ -572,27 +850,37 @@ IMPORTANT:
                     await this.sleep(
                         this.retryDelay
                     );
-                    // Retry this batch
-                    i -= this.currentParallelLimit;
+                    /*
+                     * Retry the failed batch.
+                     */
+                    i -=
+                        this.currentParallelLimit;
                     continue;
                 }
+                /*
+                 * Any non-rate-limit error stops the
+                 * translation instead of silently
+                 * producing incorrect subtitles.
+                 */
                 throw error;
             }
         }
         return results;
     },
     /**
-     * Sleep utility
-     * @param {number} ms - Milliseconds to sleep
-     * @returns {Promise}
+     * Sleep utility.
      */
     sleep(ms) {
-        return new Promise(resolve =>
-            setTimeout(resolve, ms)
+        return new Promise(
+            resolve =>
+                setTimeout(
+                    resolve,
+                    ms
+                )
         );
     },
     /**
-     * Reset throttling state
+     * Reset throttling state.
      */
     reset() {
         this.currentParallelLimit =
