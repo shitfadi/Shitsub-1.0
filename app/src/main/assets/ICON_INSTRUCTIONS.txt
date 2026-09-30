@@ -1,0 +1,82 @@
+# IMPORTANT: Create App Icons
+
+Since I cannot generate actual PNG image files, you need to create the app icons manually.
+
+## Required Icons:
+
+1. **icon-192.png** (192x192 pixels)
+2. **icon-512.png** (512x512 pixels)
+
+## Design Specifications:
+
+Based on your ShitSub branding image:
+
+### Style:
+- **Text:** "ShitSub" in bold red (#E50914)
+- **Background:** Light gray or white (#F0F0F0 or #FFFFFF)
+- **Font:** Heavy/black weight sans-serif (similar to your logo)
+- **Letter spacing:** Tight (-2px)
+
+### How to Create:
+
+#### Option 1: Using Canva (Easiest)
+1. Go to [Canva.com](https://www.canva.com)
+2. Create custom size: 512x512px
+3. Add text: "ShitSub"
+4. Font: Arial Black or similar heavy font
+5. Color: Red #E50914
+6. Background: White or light gray
+7. Export as PNG
+8. Resize to 192x192px for the second icon
+
+#### Option 2: Using Photoshop/GIMP
+1. Create new image: 512x512px
+2. Background: #FFFFFF
+3. Add text: "ShitSub"
+4. Font: Arial Black, 80-100pt
+5. Color: #E50914
+6. Center the text
+7. Save as PNG
+8. Duplicate and resize to 192x192px
+
+#### Option 3: Online Icon Generator
+1. Use [Favicon.io](https://favicon.io/favicon-generator/)
+2. Text: "ShitSub"
+3. Background: White
+4. Font: Bold
+5. Color: #E50914
+6. Download and extract 192px and 512px versions
+
+#### Option 4: Use Your Existing Logo
+If you have the ShitSub logo image:
+1. Resize to 512x512px (square canvas)
+2. Center the logo
+3. Add white or light gray background
+4. Save as icon-512.png
+5. Create 192x192px version as icon-192.png
+
+## File Placement:
+
+After creating the icons, place them in:
+```
+shitsub-github/
+└── assets/
+    ├── icon-192.png
+    └── icon-512.png
+```
+
+## Quick Test:
+
+After creating icons:
+1. Open index.html in browser
+2. Check browser console for 404 errors
+3. Icons should load without errors
+4. PWA manifest should reference icons correctly
+
+---
+
+**Note:** The icons are referenced in:
+- `index.html` (lines with `<link rel="icon"...`)
+- `manifest.json` (icons array)
+
+Make sure filenames match exactly!
