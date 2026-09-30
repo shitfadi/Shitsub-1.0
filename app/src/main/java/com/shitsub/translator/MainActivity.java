@@ -13,7 +13,6 @@ import android.provider.MediaStore;
 import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.WindowManager;
-import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -37,7 +36,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
     private static final int STORAGE_PERMISSION_REQUEST_CODE = 1002;
 
-    private String pendingBase64Data;
+    private byte[] pendingDownloadData;
     private String pendingFileName;
 
 
@@ -45,14 +44,12 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Keep screen on
         getWindow().addFlags(
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         );
 
         // Immersive TV mode
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-
             getWindow().getDecorView().setSystemUiVisibility(
                     android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                             | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -60,12 +57,9 @@ public class MainActivity extends Activity {
             );
         }
 
-
         // Create WebView
         webView = new WebView(this);
-
         setContentView(webView);
-
 
         // WebView settings
         WebSettings webSettings = webView.getSettings();
@@ -80,22 +74,18 @@ public class MainActivity extends Activity {
         webSettings.setAllowUniversalAccessFromFileURLs(true);
 
         webSettings.setMediaPlaybackRequiresUserGesture(false);
-
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-
-        // Enable WebView debugging
+        // WebView debugging
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
-
 
         // JavaScript interface
         webView.addJavascriptInterface(
                 new AndroidDownload(),
                 "AndroidDownload"
         );
-
 
         // WebView client
         webView.setWebViewClient(new WebViewClient() {
@@ -117,9 +107,7 @@ public class MainActivity extends Activity {
             }
         });
 
-
-        // IMPORTANT:
-        // This handles <input type="file">
+        // File chooser
         webView.setWebChromeClient(new WebChromeClient() {
 
             @Override
@@ -129,26 +117,20 @@ public class MainActivity extends Activity {
                     FileChooserParams fileChooserParams
             ) {
 
-                // Cancel previous callback if one exists
+                // Cancel previous callback
                 if (MainActivity.this.filePathCallback != null) {
-
                     MainActivity.this.filePathCallback.onReceiveValue(null);
                 }
 
                 MainActivity.this.filePathCallback = filePathCallback;
 
-
                 try {
+                    Intent intent = fileChooserParams.createIntent();
 
-                    Intent intent =
-                            fileChooserParams.createIntent();
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
 
-                    intent.addCategory(
-                            Intent.CATEGORY_OPENABLE
-                    );
-
-                    intent.setType("text/*");
-
+                    // Allow SRT/text files
+                    intent.setType("*/*");
 
                     startActivityForResult(
                             intent,
@@ -172,31 +154,19 @@ public class MainActivity extends Activity {
             }
         });
 
-
-        // Handle WebView downloads
+        // WebView download listener
         webView.setDownloadListener(
-                new DownloadListener() {
+                (url, userAgent, contentDisposition, mimetype, contentLength) -> {
 
-                    @Override
-                    public void onDownloadStart(
-                            String url,
-                            String userAgent,
-                            String contentDisposition,
-                            String mimetype,
-                            long contentLength
-                    ) {
-
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Download started",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                    }
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Download started",
+                            Toast.LENGTH_SHORT
+                    ).show();
                 }
         );
 
-
-        // Load ShitSub
+        // Load app
         webView.loadUrl(
                 "file:///android_asset/index.html"
         );
@@ -204,7 +174,7 @@ public class MainActivity extends Activity {
 
 
     /**
-     * Receives the selected SRT file from Android's file picker.
+     * Handle file chooser result.
      */
     @Override
     protected void onActivityResult(
@@ -219,29 +189,22 @@ public class MainActivity extends Activity {
                 data
         );
 
-
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
 
             if (filePathCallback == null) {
                 return;
             }
 
-
             Uri[] results = null;
-
 
             if (resultCode == RESULT_OK && data != null) {
 
                 Uri result = data.getData();
 
                 if (result != null) {
-
-                    results = new Uri[]{
-                            result
-                    };
+                    results = new Uri[]{result};
                 }
             }
-
 
             filePathCallback.onReceiveValue(results);
 
@@ -251,8 +214,11 @@ public class MainActivity extends Activity {
 
 
     /**
-     * JavaScript interface used by ShitSub HTML
-     * to save translated SRT files.
+     * JavaScript interface.
+     *
+     * HTML can call:
+     *
+     * AndroidDownload.saveSrt(base64Data, fileName)
      */
     public class AndroidDownload {
 
@@ -262,10 +228,14 @@ public class MainActivity extends Activity {
                 String fileName
         ) {
 
+            // Copy values before entering lambda.
+            final String receivedBase64 = base64Data;
+            final String receivedFileName = fileName;
+
             runOnUiThread(() -> {
 
-                if (base64Data == null ||
-                        base64Data.isEmpty()) {
+                if (receivedBase64 == null ||
+                        receivedBase64.isEmpty()) {
 
                     Toast.makeText(
                             MainActivity.this,
@@ -276,46 +246,45 @@ public class MainActivity extends Activity {
                     return;
                 }
 
+                String safeFileName = receivedFileName;
 
-                if (fileName == null ||
-                        fileName.trim().isEmpty()) {
+                if (safeFileName == null ||
+                        safeFileName.trim().isEmpty()) {
 
-                    fileName = "translated.srt";
+                    safeFileName = "translated.srt";
                 }
 
+                // Remove data URL prefix if present
+                String cleanBase64 = receivedBase64;
 
-                // Remove possible data URL prefix
-                if (base64Data.contains(",")) {
+                if (cleanBase64.contains(",")) {
 
-                    base64Data =
-                            base64Data.substring(
-                                    base64Data.indexOf(",") + 1
+                    cleanBase64 =
+                            cleanBase64.substring(
+                                    cleanBase64.indexOf(",") + 1
                             );
                 }
-
 
                 try {
 
-                    byte[] data =
-                            Base64.decode(
-                                    base64Data,
-                                    Base64.DEFAULT
-                            );
-
+                    byte[] data = Base64.decode(
+                            cleanBase64,
+                            Base64.DEFAULT
+                    );
 
                     if (Build.VERSION.SDK_INT >=
                             Build.VERSION_CODES.Q) {
 
                         saveUsingMediaStore(
                                 data,
-                                fileName
+                                safeFileName
                         );
 
                     } else {
 
                         saveUsingOldStorage(
                                 data,
-                                fileName
+                                safeFileName
                         );
                     }
 
@@ -337,15 +306,14 @@ public class MainActivity extends Activity {
 
     /**
      * Android 10+
-     * Save directly into public Downloads.
+     * Save to public Downloads folder.
      */
     private void saveUsingMediaStore(
             byte[] data,
             String fileName
     ) throws IOException {
 
-        ContentValues values =
-                new ContentValues();
+        ContentValues values = new ContentValues();
 
         values.put(
                 MediaStore.Downloads.DISPLAY_NAME,
@@ -367,27 +335,21 @@ public class MainActivity extends Activity {
                 1
         );
 
-
         Uri uri = getContentResolver().insert(
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 values
         );
 
-
         if (uri == null) {
-
             throw new IOException(
                     "Could not create download file"
             );
         }
 
-
         try {
 
             OutputStream outputStream =
-                    getContentResolver()
-                            .openOutputStream(uri);
-
+                    getContentResolver().openOutputStream(uri);
 
             if (outputStream == null) {
 
@@ -396,13 +358,9 @@ public class MainActivity extends Activity {
                 );
             }
 
-
             outputStream.write(data);
-
             outputStream.flush();
-
             outputStream.close();
-
 
             ContentValues completedValues =
                     new ContentValues();
@@ -412,7 +370,6 @@ public class MainActivity extends Activity {
                     0
             );
 
-
             getContentResolver().update(
                     uri,
                     completedValues,
@@ -420,14 +377,12 @@ public class MainActivity extends Activity {
                     null
             );
 
-
             Toast.makeText(
                     MainActivity.this,
                     "Downloaded to Downloads:\n"
                             + fileName,
                     Toast.LENGTH_LONG
             ).show();
-
 
         } catch (Exception e) {
 
@@ -457,19 +412,12 @@ public class MainActivity extends Activity {
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) != PackageManager.PERMISSION_GRANTED) {
 
-                pendingBase64Data =
-                        Base64.encodeToString(
-                                data,
-                                Base64.NO_WRAP
-                        );
-
+                pendingDownloadData = data;
                 pendingFileName = fileName;
-
 
                 requestPermissions(
                         new String[]{
-                                Manifest.permission
-                                        .WRITE_EXTERNAL_STORAGE
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE
                         },
                         STORAGE_PERMISSION_REQUEST_CODE
                 );
@@ -478,18 +426,14 @@ public class MainActivity extends Activity {
             }
         }
 
-
         File downloadsDir =
                 Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_DOWNLOADS
                 );
 
-
         if (!downloadsDir.exists()) {
-
             downloadsDir.mkdirs();
         }
-
 
         File file =
                 new File(
@@ -497,18 +441,14 @@ public class MainActivity extends Activity {
                         fileName
                 );
 
-
         FileOutputStream fos =
                 new FileOutputStream(file);
 
         fos.write(data);
-
         fos.flush();
-
         fos.close();
 
-
-        // Tell Android about the new file
+        // Notify Android
         Intent scanIntent =
                 new Intent(
                         Intent.ACTION_MEDIA_SCANNER_SCAN_FILE
@@ -520,7 +460,6 @@ public class MainActivity extends Activity {
 
         sendBroadcast(scanIntent);
 
-
         Toast.makeText(
                 MainActivity.this,
                 "Downloaded to Downloads:\n"
@@ -531,7 +470,7 @@ public class MainActivity extends Activity {
 
 
     /**
-     * Storage permission result for Android 9 and below.
+     * Storage permission result.
      */
     @Override
     public void onRequestPermissionsResult(
@@ -546,7 +485,6 @@ public class MainActivity extends Activity {
                 grantResults
         );
 
-
         if (requestCode ==
                 STORAGE_PERMISSION_REQUEST_CODE) {
 
@@ -554,18 +492,12 @@ public class MainActivity extends Activity {
                     grantResults[0] ==
                             PackageManager.PERMISSION_GRANTED) {
 
-                if (pendingBase64Data != null) {
+                if (pendingDownloadData != null) {
 
                     try {
 
-                        byte[] data =
-                                Base64.decode(
-                                        pendingBase64Data,
-                                        Base64.DEFAULT
-                                );
-
                         saveUsingOldStorage(
-                                data,
+                                pendingDownloadData,
                                 pendingFileName
                         );
 
@@ -577,7 +509,6 @@ public class MainActivity extends Activity {
                                 Toast.LENGTH_LONG
                         ).show();
                     }
-
                 }
 
             } else {
@@ -589,8 +520,7 @@ public class MainActivity extends Activity {
                 ).show();
             }
 
-
-            pendingBase64Data = null;
+            pendingDownloadData = null;
             pendingFileName = null;
         }
     }
@@ -605,17 +535,16 @@ public class MainActivity extends Activity {
             KeyEvent event
     ) {
 
-        if (keyCode ==
-                KeyEvent.KEYCODE_BACK) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
 
-            if (webView.canGoBack()) {
+            if (webView != null &&
+                    webView.canGoBack()) {
 
                 webView.goBack();
 
                 return true;
             }
         }
-
 
         return super.onKeyDown(
                 keyCode,
@@ -630,7 +559,6 @@ public class MainActivity extends Activity {
         super.onResume();
 
         if (webView != null) {
-
             webView.onResume();
         }
     }
@@ -640,7 +568,6 @@ public class MainActivity extends Activity {
     protected void onPause() {
 
         if (webView != null) {
-
             webView.onPause();
         }
 
@@ -654,7 +581,6 @@ public class MainActivity extends Activity {
         if (webView != null) {
 
             webView.destroy();
-
             webView = null;
         }
 
