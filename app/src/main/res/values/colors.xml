@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Netflix Red -->
-    <color name="netflix_red">#E50914</color>
-    <color name="netflix_red_dark">#B00610</color>
-    <color name="app_white">#FFFFFF</color>
-    <color name="app_black">#111111</color>
-</resources>
