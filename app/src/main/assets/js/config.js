@@ -4,23 +4,23 @@
 
 const CONFIG = {
     // Gemini Model
-    MODEL: "gemini-1.5-flash",
+    MODEL: "gemini-2.5-flash",
 
     // API Endpoint
-    API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+    API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
 
     // Translation Settings
-    CHUNK_SIZE: 25,                // Subtitles per chunk
-    MAX_PARALLEL: 15,              // Maximum parallel requests
-    MIN_PARALLEL: 3,               // Minimum parallel requests (when throttled)
+    CHUNK_SIZE: 25,
+    MAX_PARALLEL: 15,
+    MIN_PARALLEL: 3,
 
     // Retry Settings
-    MAX_RETRIES: 3,                // Maximum retry attempts per chunk
-    INITIAL_RETRY_DELAY: 1000,     // Initial retry delay (ms)
-    MAX_RETRY_DELAY: 10000,        // Maximum retry delay (ms)
+    MAX_RETRIES: 3,
+    INITIAL_RETRY_DELAY: 1000,
+    MAX_RETRY_DELAY: 10000,
 
     // Progress Settings
-    BATCH_DELAY: 300,              // Delay between batches (ms)
+    BATCH_DELAY: 300,
 
     // LocalStorage Keys
     STORAGE_KEYS: {
