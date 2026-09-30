@@ -132,7 +132,6 @@ const GeminiAPI = {
                 }
             },
             required: ["translations"],
-            additionalProperties: false
         };
     },
     /**
@@ -149,7 +148,6 @@ const GeminiAPI = {
                 }
             },
             required: ["translation"],
-            additionalProperties: false
         };
     },
     /**
