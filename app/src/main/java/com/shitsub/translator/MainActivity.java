@@ -167,9 +167,7 @@ public class MainActivity extends Activity {
         );
 
         // Load app
-        webView.loadUrl(
-                "file:///android_asset/index.html"
-        );
+        webView.loadUrl("https://shitfadi.github.io/Shitsub-1.0/");
     }
 
 
