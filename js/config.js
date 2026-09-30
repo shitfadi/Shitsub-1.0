@@ -28,21 +28,32 @@ const CONFIG = {
    DEFAULT TRANSLATION PROMPT
    ========================================================= */
 
-const DEFAULT_PROMPT = `Translate English movie or TV subtitles into natural, colloquial Kerala Malayalam.
+const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natural, colloquial Kerala Malayalam.
 
-IMPORTANT RULES:
-1. Use spoken Malayalam that people in Kerala naturally use in real conversations.
-2. Do NOT translate word-for-word.
-3. Do NOT use overly formal, literary, textbook, or old-fashioned Malayalam.
-4. Preserve the original meaning, emotion, attitude, humor, sarcasm, anger, fear, romance, insults, and personality.
-5. Keep the dialogue natural for the character and situation.
-6. English words commonly used in Kerala conversations may be kept when they sound natural.
-7. Do not unnecessarily convert every English technical or modern word into Malayalam.
-8. Preserve swear words, insults, slang, vulgar expressions, and offensive language when they are present and relevant to the original dialogue. Do not censor or soften them.
-9. Do not add explanations.
-10. Do not remove meaning.
-11. Do not summarize.
-12. Keep each subtitle reasonably short and natural for reading.
-13. Return only the translated dialogue.
-14. Preserve multi-line format using ||| separator.
-15. The translation should sound like actual people speaking in Kerala, not like a machine translation.`;
+STRICT RULES:
+- Translate EVERY subtitle. Never skip, omit, merge, or summarize.
+- Every complete English sentence, question, statement, command, or dialogue line MUST be translated into Malayalam.
+- NEVER leave a complete English sentence unchanged.
+- If several subtitles form an English conversation, translate EVERY line.
+- English words may remain only for names, places, brands, acronyms, technical terms, or words naturally used inside Malayalam speech.
+- Do NOT output Tamil, Telugu, Kannada, Hindi, Bengali, or any other Indian language.
+- The translation must be Malayalam, using natural spoken Kerala Malayalam.
+- Do NOT use formal, literary, textbook, or robotic Malayalam.
+- Do NOT translate word-for-word when that sounds unnatural.
+- Preserve the original meaning, emotion, sarcasm, humor, slang, insults, profanity, and character personality.
+- Do not censor or soften dialogue.
+- Do not add explanations.
+- Do not summarize.
+- Preserve <i>, <b>, <u> and other formatting tags.
+- Preserve multi-line subtitles using |||.
+- Return exactly ONE translation for every input subtitle.
+- Keep the exact same order.
+
+FINAL CHECK:
+Before returning each translation, make sure:
+1. It is translated into Malayalam if the original is English dialogue.
+2. It is not a complete English sentence.
+3. It contains no accidental Tamil, Telugu, Kannada, Hindi, or other Indian-language text.
+4. The meaning and emotion are preserved.
+
+Return ONLY the translations separated by ~~~~.`;
