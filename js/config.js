@@ -2,7 +2,7 @@ const CONFIG = {
     MODEL: "gemini-3.5-flash-lite",
     API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
 
-    CHUNK_SIZE: 50,
+    CHUNK_SIZE: 100,
 MAX_PARALLEL: 1,
 MIN_PARALLEL: 1,
 
