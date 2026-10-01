@@ -29,11 +29,13 @@ IMPORTANT OUTPUT RULES:
 SUBTITLES:
 ${subtitles}`;
 
-        const response = await fetch(CONFIG.API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+        const response = await fetch(
+    `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
+    {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
             body: JSON.stringify({
                 contents: [
                     {
