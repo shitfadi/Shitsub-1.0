@@ -2,6 +2,18 @@
    SHITSUB - English SRT → Natural Kerala Malayalam
    ========================================================= */
 
+/* =========================================================
+   CUSTOM FONT
+   ========================================================= */
+
+@font-face {
+    font-family: "Sequel Sans Heavy Disp";
+    src: url("../assets/SequelSansHeavyDisp.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     --red: #E50914;
     --red-dark: #B00610;
@@ -61,6 +73,7 @@ button {
 
 .logo {
     color: var(--red);
+    font-family: "Sequel Sans Heavy Disp", sans-serif;
     font-size: 46px;
     font-weight: 900;
     letter-spacing: -2px;
