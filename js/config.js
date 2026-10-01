@@ -2,15 +2,15 @@ const CONFIG = {
     MODEL: "gemini-3.5-flash-lite",
     API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
 
-    CHUNK_SIZE: 25,
+    CHUNK_SIZE: 50,
 MAX_PARALLEL: 1,
 MIN_PARALLEL: 1,
 
-MAX_RETRIES: 3,
-INITIAL_RETRY_DELAY: 4000,
-MAX_RETRY_DELAY: 10000,
+MAX_RETRIES: 5,
+INITIAL_RETRY_DELAY: 5000,
+MAX_RETRY_DELAY: 120000,
 
-BATCH_DELAY: 4000,
+BATCH_DELAY: 5500,
 
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
