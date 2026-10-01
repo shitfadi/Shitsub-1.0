@@ -1,6 +1,6 @@
 /* =========================================================
-   SHITSUB - Simple Gemini API
-   Fast translation + simple Malayalam detection
+   SHITSUB - Gemini API
+   Automatic quota-aware retry system
    ========================================================= */
 
 const GeminiAPI = {
@@ -57,10 +57,33 @@ ${input}`;
         );
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-                `Gemini API error ${response.status}: ${errorText}`
+
+            let errorData = null;
+
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                // Ignore JSON parsing failure
+            }
+
+            const error = new Error(
+                `Gemini API error ${response.status}: ` +
+                JSON.stringify(errorData || {})
             );
+
+            // Save Google's requested retry time
+            error.retryDelay =
+                errorData?.error?.details
+                    ?.find(
+                        d =>
+                            d["@type"] ===
+                            "type.googleapis.com/google.rpc.RetryInfo"
+                    )
+                    ?.retryDelay || null;
+
+            error.status = response.status;
+
+            throw error;
         }
 
         const data = await response.json();
@@ -69,19 +92,16 @@ ${input}`;
             data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!result) {
-            throw new Error("Gemini returned an empty response");
+            throw new Error(
+                "Gemini returned an empty response"
+            );
         }
 
-        /*
-         * Read numbered translations.
-         * Example:
-         * 1. സുഖമാണോ?
-         * 2. ഇവിടെ നിന്ന് പോ!
-         */
+        const translations =
+            new Array(chunk.length);
 
-        const translations = new Array(chunk.length);
-
-        const lines = result.split("\n");
+        const lines =
+            result.split("\n");
 
         for (const line of lines) {
 
@@ -93,8 +113,11 @@ ${input}`;
                 continue;
             }
 
-            const number = parseInt(match[1], 10);
-            const text = match[2].trim();
+            const number =
+                parseInt(match[1], 10);
+
+            const text =
+                match[2].trim();
 
             if (
                 number >= 1 &&
@@ -105,12 +128,11 @@ ${input}`;
             }
         }
 
-        /*
-         * Check only whether every subtitle received
-         * a translation.
-         */
-
-        for (let i = 0; i < translations.length; i++) {
+        for (
+            let i = 0;
+            i < translations.length;
+            i++
+        ) {
 
             if (!translations[i]) {
                 throw new Error(
@@ -119,44 +141,51 @@ ${input}`;
             }
         }
 
-        /*
-         * Simple Malayalam detection.
-         * This is local JavaScript, so it uses no API request.
-         */
+        // Simple Malayalam check
+        for (
+            let i = 0;
+            i < translations.length;
+            i++
+        ) {
 
-        for (let i = 0; i < translations.length; i++) {
-
-            const text = translations[i];
+            const text =
+                translations[i];
 
             const malayalamCount =
-                (text.match(/[\u0D00-\u0D7F]/g) || []).length;
+                (
+                    text.match(
+                        /[\u0D00-\u0D7F]/g
+                    ) || []
+                ).length;
 
             const letterCount =
-                (text.match(/[A-Za-z\u0D00-\u0D7F]/g) || []).length;
+                (
+                    text.match(
+                        /[A-Za-z\u0D00-\u0D7F]/g
+                    ) || []
+                ).length;
 
-            // Short names/words such as "OK" are allowed.
             if (letterCount >= 4) {
 
                 const ratio =
-                    malayalamCount / letterCount;
+                    malayalamCount /
+                    letterCount;
 
                 if (ratio < 0.35) {
                     throw new Error(
-                        `Translation ${i + 1} is not sufficiently Malayalam`
+                        `Translation ${i + 1} ` +
+                        `is not sufficiently Malayalam`
                     );
                 }
             }
         }
 
-        /*
-         * Put translations back into the original
-         * subtitle objects.
-         */
-
-        return chunk.map((subtitle, index) => ({
-            ...subtitle,
-            text: translations[index]
-        }));
+        return chunk.map(
+            (subtitle, index) => ({
+                ...subtitle,
+                text: translations[index]
+            })
+        );
     },
 
 
@@ -167,12 +196,13 @@ ${input}`;
         onProgress
     ) {
 
-        const results = new Array(chunks.length);
+        const results =
+            new Array(chunks.length);
 
         let completed = 0;
 
         const maxParallel =
-            CONFIG.MAX_PARALLEL || 5;
+            CONFIG.MAX_PARALLEL || 1;
 
         for (
             let start = 0;
@@ -212,22 +242,72 @@ ${input}`;
 
                                 } catch (error) {
 
-                                    lastError = error;
+                                    lastError =
+                                        error;
+
+                                    console.warn(
+                                        `Chunk ${chunkNumber} ` +
+                                        `failed ` +
+                                        `(attempt ${attempt}/` +
+                                        `${CONFIG.MAX_RETRIES})`,
+                                        error
+                                    );
 
                                     if (
-                                        attempt <
+                                        attempt >=
                                         CONFIG.MAX_RETRIES
                                     ) {
-                                        await this.sleep(
-                                            CONFIG.INITIAL_RETRY_DELAY *
-                                            attempt
-                                        );
+                                        break;
                                     }
+
+                                    let delay;
+
+                                    /*
+                                     * If Gemini gives us
+                                     * retryDelay, use it.
+                                     */
+
+                                    if (
+                                        error.retryDelay
+                                    ) {
+
+                                        delay =
+                                            this.parseRetryDelay(
+                                                error.retryDelay
+                                            );
+
+                                    } else {
+
+                                        delay =
+                                            CONFIG.INITIAL_RETRY_DELAY *
+                                            Math.pow(
+                                                2,
+                                                attempt - 1
+                                            );
+                                    }
+
+                                    delay =
+                                        Math.min(
+                                            delay,
+                                            CONFIG.MAX_RETRY_DELAY
+                                        );
+
+                                    console.log(
+                                        `Waiting ` +
+                                        `${Math.ceil(delay / 1000)}s ` +
+                                        `before retrying chunk ` +
+                                        `${chunkNumber}...`
+                                    );
+
+                                    await this.sleep(
+                                        delay
+                                    );
                                 }
                             }
 
                             throw new Error(
-                                `Chunk ${chunkNumber} failed: ${lastError.message}`
+                                `Chunk ${chunkNumber} failed: ` +
+                                `${lastError?.message || "Unknown error"}`
                             );
                         }
                     )
@@ -235,11 +315,13 @@ ${input}`;
 
             translated.forEach(
                 (chunk, index) => {
-                    results[start + index] = chunk;
+                    results[start + index] =
+                        chunk;
                 }
             );
 
-            completed += translated.length;
+            completed +=
+                translated.length;
 
             if (onProgress) {
                 onProgress(
@@ -249,13 +331,14 @@ ${input}`;
             }
 
             /*
-             * Small delay between groups.
+             * Normal spacing between requests.
              */
 
             if (
-                start + maxParallel < chunks.length &&
-                CONFIG.BATCH_DELAY > 0
+                start + maxParallel <
+                chunks.length
             ) {
+
                 await this.sleep(
                     CONFIG.BATCH_DELAY
                 );
@@ -266,10 +349,50 @@ ${input}`;
     },
 
 
+    parseRetryDelay(value) {
+
+        if (!value) {
+            return 5000;
+        }
+
+        /*
+         * Google normally returns:
+         * "3s"
+         * "54s"
+         */
+
+        if (
+            typeof value === "string" &&
+            value.endsWith("s")
+        ) {
+
+            const seconds =
+                parseFloat(
+                    value.slice(0, -1)
+                );
+
+            if (
+                Number.isFinite(seconds)
+            ) {
+                return (
+                    seconds * 1000
+                ) + 1000;
+            }
+        }
+
+        return 5000;
+    },
+
+
     sleep(ms) {
-        return new Promise(resolve => {
-            setTimeout(resolve, ms);
-        });
+
+        return new Promise(
+            resolve =>
+                setTimeout(
+                    resolve,
+                    ms
+                )
+        );
     },
 
 
