@@ -1,57 +1,66 @@
 /* =========================================================
    SHITSUB - Simple Gemini API
-   Fast parallel translation + Malayalam detection
+   Fast translation + simple Malayalam detection
    ========================================================= */
 
 const GeminiAPI = {
 
     async translateChunk(chunk, apiKey, customPrompt) {
 
-        const subtitles = chunk
-            .map((sub, index) => `${index + 1}. ${sub.text}`)
-            .join("\n");
+        const input = chunk.map((subtitle, index) => {
+            return `${index + 1}. ${subtitle.text}`;
+        }).join("\n");
 
         const prompt = `${customPrompt}
 
-IMPORTANT OUTPUT RULES:
-- Translate EVERY subtitle.
-- Return exactly ONE Malayalam translation for each subtitle.
+IMPORTANT:
+Translate every subtitle into natural spoken Kerala Malayalam.
+
+OUTPUT RULES:
+- Translate every subtitle.
 - Keep the exact same order.
-- Do not skip any subtitle.
+- Do not skip anything.
 - Do not merge subtitles.
 - Do not add explanations.
-- Do not add numbering.
-- Return ONLY the translations.
-- Separate each translation with exactly four tildes:
+- Return ONLY the numbered translations.
+- Keep the numbering exactly as shown.
+- Use Malayalam for dialogue.
+- Do not use Tamil, Telugu, Kannada, Hindi, or Bengali.
 
-~~~~
+FORMAT:
+1. Malayalam translation
+2. Malayalam translation
+3. Malayalam translation
 
 SUBTITLES:
-${subtitles}`;
+${input}`;
 
         const response = await fetch(
-    `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
-    {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: prompt
-                            }
-                        ]
-                    }
-                ]
-            })
-        });
+            `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: prompt
+                                }
+                            ]
+                        }
+                    ]
+                })
+            }
+        );
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`Gemini API error ${response.status}: ${errorText}`);
+            throw new Error(
+                `Gemini API error ${response.status}: ${errorText}`
+            );
         }
 
         const data = await response.json();
@@ -63,34 +72,86 @@ ${subtitles}`;
             throw new Error("Gemini returned an empty response");
         }
 
-        const translations = result
-            .split("~~~~")
-            .map(text => text.trim())
-            .filter(text => text.length > 0);
+        /*
+         * Read numbered translations.
+         * Example:
+         * 1. സുഖമാണോ?
+         * 2. ഇവിടെ നിന്ന് പോ!
+         */
 
-        if (translations.length !== chunk.length) {
-            throw new Error(
-                `Translation count mismatch: expected ${chunk.length}, got ${translations.length}`
+        const translations = new Array(chunk.length);
+
+        const lines = result.split("\n");
+
+        for (const line of lines) {
+
+            const match = line.match(
+                /^\s*(\d+)\s*[\.\):\-]\s*(.+)$/
             );
-        }
 
-        // Lightweight Malayalam detection
-        const validMalayalam = translations.every(text => {
-            const malayalam = (text.match(/[\u0D00-\u0D7F]/g) || []).length;
-            const letters = (text.match(/[A-Za-z\u0D00-\u0D7F]/g) || []).length;
-
-            // Very short things such as names or "OK" can legitimately
-            // contain little Malayalam, so don't reject them.
-            if (letters < 4) {
-                return true;
+            if (!match) {
+                continue;
             }
 
-            return malayalam / letters >= 0.35;
-        });
+            const number = parseInt(match[1], 10);
+            const text = match[2].trim();
 
-        if (!validMalayalam) {
-            throw new Error("Gemini returned text that is not sufficiently Malayalam");
+            if (
+                number >= 1 &&
+                number <= chunk.length &&
+                text
+            ) {
+                translations[number - 1] = text;
+            }
         }
+
+        /*
+         * Check only whether every subtitle received
+         * a translation.
+         */
+
+        for (let i = 0; i < translations.length; i++) {
+
+            if (!translations[i]) {
+                throw new Error(
+                    `Missing translation for subtitle ${i + 1}`
+                );
+            }
+        }
+
+        /*
+         * Simple Malayalam detection.
+         * This is local JavaScript, so it uses no API request.
+         */
+
+        for (let i = 0; i < translations.length; i++) {
+
+            const text = translations[i];
+
+            const malayalamCount =
+                (text.match(/[\u0D00-\u0D7F]/g) || []).length;
+
+            const letterCount =
+                (text.match(/[A-Za-z\u0D00-\u0D7F]/g) || []).length;
+
+            // Short names/words such as "OK" are allowed.
+            if (letterCount >= 4) {
+
+                const ratio =
+                    malayalamCount / letterCount;
+
+                if (ratio < 0.35) {
+                    throw new Error(
+                        `Translation ${i + 1} is not sufficiently Malayalam`
+                    );
+                }
+            }
+        }
+
+        /*
+         * Put translations back into the original
+         * subtitle objects.
+         */
 
         return chunk.map((subtitle, index) => ({
             ...subtitle,
@@ -107,9 +168,11 @@ ${subtitles}`;
     ) {
 
         const results = new Array(chunks.length);
+
         let completed = 0;
 
-        const maxParallel = CONFIG.MAX_PARALLEL || 5;
+        const maxParallel =
+            CONFIG.MAX_PARALLEL || 5;
 
         for (
             let start = 0;
@@ -117,58 +180,64 @@ ${subtitles}`;
             start += maxParallel
         ) {
 
-            const batch = chunks.slice(
-                start,
-                start + maxParallel
-            );
+            const currentChunks =
+                chunks.slice(
+                    start,
+                    start + maxParallel
+                );
 
-            const translated = await Promise.all(
-                batch.map(async (chunk, batchIndex) => {
+            const translated =
+                await Promise.all(
+                    currentChunks.map(
+                        async (chunk, index) => {
 
-                    const chunkIndex = start + batchIndex;
+                            const chunkNumber =
+                                start + index + 1;
 
-                    let lastError;
+                            let lastError;
 
-                    for (
-                        let attempt = 1;
-                        attempt <= CONFIG.MAX_RETRIES;
-                        attempt++
-                    ) {
-
-                        try {
-
-                            return await this.translateChunk(
-                                chunk,
-                                apiKey,
-                                customPrompt
-                            );
-
-                        } catch (error) {
-
-                            lastError = error;
-
-                            if (
-                                attempt <
-                                CONFIG.MAX_RETRIES
+                            for (
+                                let attempt = 1;
+                                attempt <= CONFIG.MAX_RETRIES;
+                                attempt++
                             ) {
 
-                                await this.sleep(
-                                    CONFIG.INITIAL_RETRY_DELAY *
-                                    attempt
-                                );
+                                try {
+
+                                    return await this.translateChunk(
+                                        chunk,
+                                        apiKey,
+                                        customPrompt
+                                    );
+
+                                } catch (error) {
+
+                                    lastError = error;
+
+                                    if (
+                                        attempt <
+                                        CONFIG.MAX_RETRIES
+                                    ) {
+                                        await this.sleep(
+                                            CONFIG.INITIAL_RETRY_DELAY *
+                                            attempt
+                                        );
+                                    }
+                                }
                             }
+
+                            throw new Error(
+                                `Chunk ${chunkNumber} failed: ${lastError.message}`
+                            );
                         }
-                    }
+                    )
+                );
 
-                    throw new Error(
-                        `Chunk ${chunkIndex + 1} failed: ${lastError.message}`
-                    );
-                })
+            translated.forEach(
+                (chunk, index) => {
+                    results[start + index] = chunk;
+                }
             );
-
-            translated.forEach((chunk, index) => {
-                results[start + index] = chunk;
-            });
 
             completed += translated.length;
 
@@ -179,11 +248,17 @@ ${subtitles}`;
                 );
             }
 
+            /*
+             * Small delay between groups.
+             */
+
             if (
                 start + maxParallel < chunks.length &&
                 CONFIG.BATCH_DELAY > 0
             ) {
-                await this.sleep(CONFIG.BATCH_DELAY);
+                await this.sleep(
+                    CONFIG.BATCH_DELAY
+                );
             }
         }
 
@@ -199,6 +274,6 @@ ${subtitles}`;
 
 
     reset() {
-        // Nothing to reset in the simple version.
+        // Nothing to reset.
     }
 };
