@@ -9,7 +9,7 @@ const GeminiAPI = {
     async translateChunk(chunk, apiKey, customPrompt) {
 
         const input = chunk.map((subtitle, index) => {
-            return `${index + 1}. ${subtitle.text}`;
+            return `[[SUBTITLE_${index + 1}]] ${subtitle.text}`;
         }).join("\n");
 
         const prompt = `${customPrompt}
@@ -19,20 +19,23 @@ Translate EVERY subtitle below into natural spoken Kerala Malayalam.
 
 STRICT OUTPUT RULES:
 - Translate every subtitle.
+- Keep the exact same subtitle ID.
+- Do not change, remove, duplicate, or invent any subtitle ID.
+- Each subtitle ID must appear exactly once.
+- The translation must belong to the exact English subtitle attached to that ID.
 - Keep the exact same order.
-- Do not skip any number.
+- Do not skip any subtitle.
 - Do not merge subtitles.
 - Do not summarize.
 - Do not add explanations.
-- Return ONLY numbered translations.
-- Use exactly the same numbering from 1 to ${chunk.length}.
+- Return ONLY subtitle IDs and their Malayalam translations.
 - Use Malayalam for dialogue.
 - Do not use Tamil, Telugu, Kannada, Hindi, or Bengali.
 
 FORMAT:
-1. Malayalam translation
-2. Malayalam translation
-3. Malayalam translation
+[[SUBTITLE_1]] Malayalam translation
+[[SUBTITLE_2]] Malayalam translation
+[[SUBTITLE_3]] Malayalam translation
 
 SUBTITLES:
 ${input}`;
@@ -43,7 +46,7 @@ ${input}`;
         );
 
         const translations =
-            this.parseNumberedTranslations(
+            this.parseIdTranslations(
                 result,
                 chunk.length
             );
@@ -225,9 +228,10 @@ ${input}`;
 
 
     /*
-     * Parse numbered Gemini output.
+     * Parse Gemini output using permanent
+     * subtitle IDs instead of response order.
      */
-    parseNumberedTranslations(
+    parseIdTranslations(
         result,
         count
     ) {
@@ -250,15 +254,14 @@ ${input}`;
             }
 
             /*
-             * Normal:
-             * 1. text
-             * 1) text
-             * 1: text
-             * 1- text
+             * Expected:
+             * [[SUBTITLE_1]] text
+             * [[SUBTITLE_2]] text
+             * [[SUBTITLE_3]] text
              */
             const match =
                 line.match(
-                    /^\s*(\d+)\s*[\.\):\-]\s*(.*)$/
+                    /^\s*\[\[SUBTITLE_(\d+)\]\]\s*(.*)$/
                 );
 
             if (match) {
@@ -291,7 +294,7 @@ ${input}`;
             /*
              * If Gemini wrapped the translation
              * onto another line, attach it to
-             * the previous numbered item.
+             * the previous subtitle ID.
              */
             if (
                 currentNumber !== null &&
@@ -358,7 +361,7 @@ ${input}`;
                     chunk[number - 1];
 
                 return (
-                    `${number}. ` +
+                    `[[SUBTITLE_${number}]] ` +
                     subtitle.text
                 );
 
@@ -369,13 +372,15 @@ ${input}`;
 IMPORTANT:
 Some subtitle translations were missing from a previous response.
 
-Translate ONLY the subtitle numbers listed below.
+Translate ONLY the subtitle IDs listed below.
 
 STRICT RULES:
 - Translate every listed subtitle.
-- Do not skip any number.
-- Keep the exact numbers.
-- Return ONLY numbered translations.
+- Preserve every [[SUBTITLE_X]] ID exactly.
+- Do not skip any ID.
+- Do not change any ID.
+- Do not duplicate any ID.
+- Return ONLY subtitle IDs and Malayalam translations.
 - Use natural spoken Kerala Malayalam.
 - Do not use Tamil, Telugu, Kannada, Hindi, or Bengali.
 - Do not add explanations.
@@ -383,7 +388,7 @@ STRICT RULES:
 FORMAT:
 ${missing
     .map(number =>
-        `${number}. Malayalam translation`
+        `[[SUBTITLE_${number}]] Malayalam translation`
     )
     .join("\n")}
 
@@ -419,7 +424,7 @@ ${input}`;
 
                     const match =
                         line.match(
-                            /^\s*(\d+)\s*[\.\):\-]\s*(.+)$/
+                            /^\s*\[\[SUBTITLE_(\d+)\]\]\s*(.+)$/
                         );
 
                     if (!match) {
