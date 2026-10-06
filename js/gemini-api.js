@@ -39,7 +39,10 @@ STRICT RULES:
 - Use natural colloquial Kerala Malayalam.
 - Preserve the character's personality, emotion, tone, slang and profanity.
 - Do not unnecessarily make casual dialogue formal.
-- Do not use Tamil, Telugu, Kannada, Hindi or Bengali.
+- Use Malayalam script for Malayalam dialogue.
+- Never use Devanagari, Tamil, Telugu, Kannada, Bengali, Assamese, Gujarati, Gurmukhi, Odia, Sinhala, Meitei or Ol Chiki script.
+- Do not transliterate Malayalam into another Indian script.
+- Do not mix Malayalam with another Indian script.
 - Keep names, numbers, URLs and important proper nouns accurate.
 - Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
 - Do not add Markdown.
@@ -394,36 +397,97 @@ ${input}`;
 
     hasBadLanguage(text) {
 
-        const malayalamCount =
+    const malayalamCount =
+        (
+            text.match(
+                /[\u0D00-\u0D7F]/g
+            ) || []
+        ).length;
+
+    const latinCount =
+        (
+            text.match(
+                /[A-Za-z]/g
+            ) || []
+        ).length;
+
+    // Detect other Indic scripts
+    const foreignScriptPatterns = [
+
+        // Devanagari - Hindi, Marathi, Nepali, Sanskrit
+        /[\u0900-\u097F]/g,
+
+        // Bengali / Assamese
+        /[\u0980-\u09FF]/g,
+
+        // Gurmukhi - Punjabi
+        /[\u0A00-\u0A7F]/g,
+
+        // Gujarati
+        /[\u0A80-\u0AFF]/g,
+
+        // Oriya / Odia
+        /[\u0B00-\u0B7F]/g,
+
+        // Tamil
+        /[\u0B80-\u0BFF]/g,
+
+        // Telugu
+        /[\u0C00-\u0C7F]/g,
+
+        // Kannada
+        /[\u0C80-\u0CFF]/g,
+
+        // Sinhala
+        /[\u0D80-\u0DFF]/g,
+
+        // Meitei / Manipuri
+        /[\uABC0-\uABFF]/g,
+
+        // Ol Chiki - Santali
+        /[\u1C50-\u1C7F]/g
+    ];
+
+    let foreignScriptCount = 0;
+
+    for (
+        const pattern of foreignScriptPatterns
+    ) {
+
+        foreignScriptCount +=
             (
-                text.match(
-                    /[\u0D00-\u0D7F]/g
-                ) || []
+                text.match(pattern) || []
             ).length;
+    }
 
-        const latinCount =
-            (
-                text.match(
-                    /[A-Za-z]/g
-                ) || []
-            ).length;
+    // Any meaningful amount of another
+    // Indic script means contamination.
+    if (
+        foreignScriptCount >= 2
+    ) {
+        return true;
+    }
 
-        const letterCount =
-            malayalamCount +
-            latinCount;
+    const letterCount =
+        malayalamCount +
+        latinCount;
 
-        if (
-            letterCount < 4
-        ) {
-            return false;
-        }
+    // Very short subtitles such as:
+    // "അതെ", "ഇല്ല", "OK", "FBI"
+    // should not be rejected only because
+    // they contain very few characters.
+    if (
+        letterCount < 4
+    ) {
+        return false;
+    }
 
-        const ratio =
-            malayalamCount /
-            letterCount;
+    const ratio =
+        malayalamCount /
+        letterCount;
 
-        return ratio < 0.35;
-    },
+    return ratio < 0.35;
+},
 
 
     hasBrokenTags(
