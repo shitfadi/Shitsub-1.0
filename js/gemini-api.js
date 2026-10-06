@@ -287,189 +287,112 @@ ${input}`;
     },
 
 
-    validateTranslations(
-        chunk,
-        translations
-    ) {
-
-        const problems = [];
-
-        if (
-            !Array.isArray(translations) ||
-            translations.length !== chunk.length
-        ) {
-
-            problems.push(
-                "translation count mismatch"
-            );
-
-            return problems;
-        }
-
-        for (
-            let i = 0;
-            i < chunk.length;
-            i++
-        ) {
-
-            const english =
-                chunk[i].text || "";
-
-            const translated =
-                translations[i];
-
-            if (
-                !translated ||
-                !translated.trim()
-            ) {
-
-                problems.push(
-                    `missing:${i + 1}`
-                );
-
-                continue;
-            }
-
-            if (
-                this.hasBadLanguage(
-                    translated
-                )
-            ) {
-
-                problems.push(
-                    `language:${i + 1}`
-                );
-            }
-
-            if (
-                this.hasBrokenTags(
-                    english,
-                    translated
-                )
-            ) {
-
-                problems.push(
-                    `tags:${i + 1}`
-                );
-            }
-
-            if (
-                this.hasBrokenImportantTokens(
-                    english,
-                    translated
-                )
-            ) {
-
-                problems.push(
-                    `tokens:${i + 1}`
-                );
-            }
-
-            if (
-                isSuspiciousDuplicate(
+validateTranslations(
     chunk,
-    translations,
-    index
+    translations
 ) {
 
-    const current =
-        this.normalizeForDuplicateCheck(
-            translations[index] || ""
+    const problems = [];
+
+    if (
+        !Array.isArray(translations) ||
+        translations.length !== chunk.length
+    ) {
+
+        problems.push(
+            "translation count mismatch"
         );
 
-    if (!current || current.length < 12) {
-        return false;
+        return problems;
     }
-
-    const currentEnglish =
-        this.normalizeForDuplicateCheck(
-            chunk[index].text || ""
-        );
 
     for (
         let i = 0;
-        i < translations.length;
+        i < chunk.length;
         i++
     ) {
 
-        if (i === index) {
-            continue;
-        }
+        const english =
+            chunk[i].text || "";
 
-        const other =
-            this.normalizeForDuplicateCheck(
-                translations[i] || ""
-            );
-
-        if (!other || other !== current) {
-            continue;
-        }
-
-        const otherEnglish =
-            this.normalizeForDuplicateCheck(
-                chunk[i].text || ""
-            );
-
-        if (currentEnglish === otherEnglish) {
-            continue;
-        }
-
-        /*
-         * Identical Malayalam translations can be completely
-         * legitimate. Only flag a duplicate when both English
-         * subtitles are reasonably long and clearly different.
-         */
-
-        const wordsA =
-            currentEnglish
-                .split(/\s+/)
-                .filter(word => word.length > 2);
-
-        const wordsB =
-            otherEnglish
-                .split(/\s+/)
-                .filter(word => word.length > 2);
+        const translated =
+            translations[i];
 
         if (
-            wordsA.length < 5 ||
-            wordsB.length < 5
+            !translated ||
+            !translated.trim()
         ) {
+
+            problems.push(
+                `missing:${i + 1}`
+            );
+
             continue;
         }
 
         if (
-            this.englishMeaningLooksDifferent(
-                currentEnglish,
-                otherEnglish
+            this.hasBadLanguage(
+                translated
             )
         ) {
-            return true;
+
+            problems.push(
+                `language:${i + 1}`
+            );
+        }
+
+        if (
+            this.hasBrokenTags(
+                english,
+                translated
+            )
+        ) {
+
+            problems.push(
+                `tags:${i + 1}`
+            );
+        }
+
+        if (
+            this.hasBrokenImportantTokens(
+                english,
+                translated
+            )
+        ) {
+
+            problems.push(
+                `tokens:${i + 1}`
+            );
+        }
+
+        if (
+            this.isSuspiciousDuplicate(
+                chunk,
+                translations,
+                i
+            )
+        ) {
+
+            problems.push(
+                `duplicate:${i + 1}`
+            );
+        }
+
+        if (
+            this.isSuspiciousEnglishCarryover(
+                english,
+                translated
+            )
+        ) {
+
+            problems.push(
+                `english:${i + 1}`
+            );
         }
     }
 
-    return false;
+    return problems;
 },
-
-                problems.push(
-                    `duplicate:${i + 1}`
-                );
-            }
-
-            if (
-                this.isSuspiciousEnglishCarryover(
-                    english,
-                    translated
-                )
-            ) {
-
-                problems.push(
-                    `english:${i + 1}`
-                );
-            }
-        }
-
-        return problems;
-    },
 
 
     hasBadLanguage(text) {
