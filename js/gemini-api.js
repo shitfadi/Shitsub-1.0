@@ -1,7 +1,6 @@
 /* =========================================================
    SHITSUB - Gemini API
-   100-subtitle batches + automatic missing-item recovery
-   + automatic 429 retry handling
+   Robust translation + validation + targeted recovery
    ========================================================= */
 
 const GeminiAPI = {
@@ -9,33 +8,57 @@ const GeminiAPI = {
     async translateChunk(chunk, apiKey, customPrompt) {
 
         const input = chunk.map((subtitle, index) => {
-            return `[[SUBTITLE_${index + 1}]] ${subtitle.text}`;
-        }).join("\n");
+            return `[[SUBTITLE_${index + 1}]]\n${subtitle.text}`;
+        }).join("\n\n");
 
         const prompt = `${customPrompt}
 
 IMPORTANT:
-Translate EVERY subtitle below into natural spoken Kerala Malayalam.
+Translate EVERY subtitle below into natural, spoken Kerala Malayalam.
 
-STRICT OUTPUT RULES:
+The subtitles are identified by immutable IDs.
+
+STRICT RULES:
 - Translate every subtitle.
-- Keep the exact same subtitle ID.
-- Do not change, remove, duplicate, or invent any subtitle ID.
-- Each subtitle ID must appear exactly once.
-- The translation must belong to the exact English subtitle attached to that ID.
-- Keep the exact same order.
-- Do not skip any subtitle.
+- Preserve every [[SUBTITLE_X]] ID exactly.
+- Each ID must appear exactly once.
+- Never change an ID.
+- Never remove an ID.
+- Never invent an ID.
+- Never duplicate an ID.
+- The translation after an ID MUST correspond to the English subtitle belonging to that exact ID.
+- Never move a translation from one subtitle ID to another.
+- Translate each subtitle independently.
+- Use surrounding subtitles only to understand context.
 - Do not merge subtitles.
+- Do not split subtitles.
+- Do not skip subtitles.
 - Do not summarize.
 - Do not add explanations.
-- Return ONLY subtitle IDs and their Malayalam translations.
-- Use Malayalam for dialogue.
-- Do not use Tamil, Telugu, Kannada, Hindi, or Bengali.
+- Return ONLY subtitle IDs and translations.
+- Use natural colloquial Kerala Malayalam.
+- Preserve the character's personality, emotion, tone, slang and profanity.
+- Do not unnecessarily make casual dialogue formal.
+- Do not use Tamil, Telugu, Kannada, Hindi or Bengali.
+- Keep names, numbers, URLs and important proper nouns accurate.
+- Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
+- Do not add Markdown.
+- Do not add quotation marks unless they are part of the original subtitle.
+
+IMPORTANT DUPLICATE RULE:
+- Different English subtitles may legitimately have similar Malayalam translations.
+- However, never copy a translation from another subtitle simply because the English subtitles look similar.
+- Each translation must be based on the English text belonging to its own ID.
 
 FORMAT:
-[[SUBTITLE_1]] Malayalam translation
-[[SUBTITLE_2]] Malayalam translation
-[[SUBTITLE_3]] Malayalam translation
+[[SUBTITLE_1]]
+Malayalam translation
+
+[[SUBTITLE_2]]
+Malayalam translation
+
+[[SUBTITLE_3]]
+Malayalam translation
 
 SUBTITLES:
 ${input}`;
@@ -45,94 +68,47 @@ ${input}`;
             apiKey
         );
 
-        const translations =
+        let translations =
             this.parseIdTranslations(
                 result,
                 chunk.length
             );
 
-        const missing =
-            this.getMissingNumbers(
+        let problems =
+            this.validateTranslations(
+                chunk,
                 translations
             );
 
-        /*
-         * Recover missing translations.
-         */
-        if (missing.length > 0) {
+        if (problems.length > 0) {
 
             console.warn(
-                `Missing translations: ${missing.join(", ")}`
+                "Translation validation problems:",
+                problems
             );
 
-            const recovered =
-                await this.recoverMissing(
+            translations =
+                await this.recoverProblems(
                     chunk,
-                    missing,
+                    translations,
+                    problems,
                     apiKey,
                     customPrompt
                 );
-
-            for (const number of missing) {
-                translations[number - 1] =
-                    recovered[number];
-            }
         }
 
-        /*
-         * Final check.
-         */
-        for (
-            let i = 0;
-            i < translations.length;
-            i++
-        ) {
-            if (!translations[i]) {
-                throw new Error(
-                    `Missing translation for subtitle ${i + 1}`
-                );
-            }
-        }
+        const finalProblems =
+            this.validateTranslations(
+                chunk,
+                translations
+            );
 
-        /*
-         * Simple Malayalam check.
-         */
-        for (
-            let i = 0;
-            i < translations.length;
-            i++
-        ) {
+        if (finalProblems.length > 0) {
 
-            const text =
-                translations[i];
-
-            const malayalamCount =
-                (
-                    text.match(
-                        /[\u0D00-\u0D7F]/g
-                    ) || []
-                ).length;
-
-            const letterCount =
-                (
-                    text.match(
-                        /[A-Za-z\u0D00-\u0D7F]/g
-                    ) || []
-                ).length;
-
-            if (letterCount >= 4) {
-
-                const ratio =
-                    malayalamCount /
-                    letterCount;
-
-                if (ratio < 0.35) {
-                    throw new Error(
-                        `Translation ${i + 1} ` +
-                        `is not sufficiently Malayalam`
-                    );
-                }
-            }
+            throw new Error(
+                "Translation validation failed: " +
+                finalProblems.join(", ")
+            );
         }
 
         return chunk.map(
@@ -144,9 +120,6 @@ ${input}`;
     },
 
 
-    /*
-     * Send one request to Gemini.
-     */
     async callGemini(prompt, apiKey) {
 
         const response = await fetch(
@@ -194,9 +167,6 @@ ${input}`;
             error.status =
                 response.status;
 
-            /*
-             * Read Google's retryDelay.
-             */
             error.retryDelay =
                 errorData?.error?.details
                     ?.find(
@@ -227,10 +197,6 @@ ${input}`;
     },
 
 
-    /*
-     * Parse Gemini output using permanent
-     * subtitle IDs instead of response order.
-     */
     parseIdTranslations(
         result,
         count
@@ -239,10 +205,14 @@ ${input}`;
         const translations =
             new Array(count);
 
+        const seen =
+            new Set();
+
         const lines =
             result.split(/\r?\n/);
 
-        let currentNumber = null;
+        let currentNumber =
+            null;
 
         for (const rawLine of lines) {
 
@@ -253,15 +223,9 @@ ${input}`;
                 continue;
             }
 
-            /*
-             * Expected:
-             * [[SUBTITLE_1]] text
-             * [[SUBTITLE_2]] text
-             * [[SUBTITLE_3]] text
-             */
             const match =
                 line.match(
-                    /^\s*\[\[SUBTITLE_(\d+)\]\]\s*(.*)$/
+                    /^\s*\[\[SUBTITLE_(\d+)\]\]\s*$/
                 );
 
             if (match) {
@@ -272,40 +236,43 @@ ${input}`;
                         10
                     );
 
-                const text =
-                    match[2].trim();
-
                 if (
                     number >= 1 &&
                     number <= count
                 ) {
 
-                    translations[
-                        number - 1
-                    ] = text;
-
                     currentNumber =
                         number;
+
+                    seen.add(number);
+
+                    if (
+                        translations[
+                            number - 1
+                        ] === undefined
+                    ) {
+                        translations[
+                            number - 1
+                        ] = "";
+                    }
 
                     continue;
                 }
             }
 
-            /*
-             * If Gemini wrapped the translation
-             * onto another line, attach it to
-             * the previous subtitle ID.
-             */
             if (
-                currentNumber !== null &&
-                currentNumber >= 1 &&
-                currentNumber <= count
+                currentNumber !== null
             ) {
 
                 const index =
                     currentNumber - 1;
 
-                if (translations[index]) {
+                if (!translations[index]) {
+
+                    translations[index] =
+                        line;
+
+                } else {
 
                     translations[index] +=
                         " " + line;
@@ -317,14 +284,351 @@ ${input}`;
     },
 
 
-    /*
-     * Find missing subtitle numbers.
-     */
-    getMissingNumbers(
+    validateTranslations(
+        chunk,
         translations
     ) {
 
-        const missing = [];
+        const problems = [];
+
+        if (
+            !Array.isArray(translations) ||
+            translations.length !== chunk.length
+        ) {
+
+            problems.push(
+                "translation count mismatch"
+            );
+
+            return problems;
+        }
+
+        for (
+            let i = 0;
+            i < chunk.length;
+            i++
+        ) {
+
+            const english =
+                chunk[i].text || "";
+
+            const translated =
+                translations[i];
+
+            if (
+                !translated ||
+                !translated.trim()
+            ) {
+
+                problems.push(
+                    `missing:${i + 1}`
+                );
+
+                continue;
+            }
+
+            if (
+                this.hasBadLanguage(
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `language:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBrokenTags(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `tags:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBrokenImportantTokens(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `tokens:${i + 1}`
+                );
+            }
+
+            if (
+                this.isSuspiciousDuplicate(
+                    chunk,
+                    translations,
+                    i
+                )
+            ) {
+
+                problems.push(
+                    `duplicate:${i + 1}`
+                );
+            }
+
+            if (
+                this.isSuspiciousEnglishCarryover(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `english:${i + 1}`
+                );
+            }
+        }
+
+        return problems;
+    },
+
+
+    hasBadLanguage(text) {
+
+        const malayalamCount =
+            (
+                text.match(
+                    /[\u0D00-\u0D7F]/g
+                ) || []
+            ).length;
+
+        const latinCount =
+            (
+                text.match(
+                    /[A-Za-z]/g
+                ) || []
+            ).length;
+
+        const letterCount =
+            malayalamCount +
+            latinCount;
+
+        if (
+            letterCount < 4
+        ) {
+            return false;
+        }
+
+        const ratio =
+            malayalamCount /
+            letterCount;
+
+        return ratio < 0.35;
+    },
+
+
+    hasBrokenTags(
+        original,
+        translated
+    ) {
+
+        const tagPattern =
+            /<\/?[a-zA-Z][^>]*>/g;
+
+        const originalTags =
+            original.match(tagPattern) || [];
+
+        const translatedTags =
+            translated.match(tagPattern) || [];
+
+        if (
+            originalTags.length !==
+            translatedTags.length
+        ) {
+            return true;
+        }
+
+        for (
+            let i = 0;
+            i < originalTags.length;
+            i++
+        ) {
+
+            if (
+                originalTags[i] !==
+                translatedTags[i]
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+
+    hasBrokenImportantTokens(
+        original,
+        translated
+    ) {
+
+        const tokens =
+            this.extractImportantTokens(
+                original
+            );
+
+        for (const token of tokens) {
+
+            if (
+                !translated.includes(token)
+            ) {
+
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+
+    extractImportantTokens(
+        text
+    ) {
+
+        const tokens = [];
+
+        const patterns = [
+
+            // URLs
+            /https?:\/\/[^\s]+/gi,
+
+            // Email addresses
+            /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+
+            // Percentages
+            /\b\d+(?:\.\d+)?%/g,
+
+            // Currency / amounts
+            /[$€£₹]\s?\d+(?:[.,]\d+)*/g,
+
+            // Numbers
+            /\b\d+(?:[.,]\d+)*\b/g
+        ];
+
+        for (const pattern of patterns) {
+
+            const matches =
+                text.match(pattern) || [];
+
+            for (const match of matches) {
+
+                if (
+                    !tokens.includes(match)
+                ) {
+                    tokens.push(match);
+                }
+            }
+        }
+
+        return tokens;
+    },
+
+
+    isSuspiciousEnglishCarryover(
+        original,
+        translated
+    ) {
+
+        const originalWords =
+            this.getEnglishWords(
+                original
+            );
+
+        if (
+            originalWords.length < 4
+        ) {
+            return false;
+        }
+
+        const translatedLower =
+            translated.toLowerCase();
+
+        let unchanged = 0;
+
+        for (
+            const word of originalWords
+        ) {
+
+            if (
+                translatedLower.includes(
+                    word.toLowerCase()
+                )
+            ) {
+
+                unchanged++;
+            }
+        }
+
+        return (
+            unchanged >= 4 &&
+            unchanged /
+            originalWords.length >= 0.7
+        );
+    },
+
+
+    getEnglishWords(text) {
+
+        return (
+            text.match(
+                /\b[A-Za-z]{3,}\b/g
+            ) || []
+        );
+    },
+
+
+    normalizeForDuplicateCheck(
+        text
+    ) {
+
+        return text
+            .toLowerCase()
+            .replace(
+                /[\u200B-\u200D\uFEFF]/g,
+                ""
+            )
+            .replace(
+                /[.,!?;:'"“”‘’()[\]{}<>]/g,
+                ""
+            )
+            .replace(
+                /\s+/g,
+                " "
+            )
+            .trim();
+    },
+
+
+    isSuspiciousDuplicate(
+        chunk,
+        translations,
+        index
+    ) {
+
+        const current =
+            this.normalizeForDuplicateCheck(
+                translations[index] || ""
+            );
+
+        if (
+            !current ||
+            current.length < 8
+        ) {
+            return false;
+        }
+
+        const currentEnglish =
+            this.normalizeForDuplicateCheck(
+                chunk[index].text || ""
+            );
 
         for (
             let i = 0;
@@ -332,72 +636,209 @@ ${input}`;
             i++
         ) {
 
+            if (i === index) {
+                continue;
+            }
+
+            const other =
+                this.normalizeForDuplicateCheck(
+                    translations[i] || ""
+                );
+
             if (
-                !translations[i] ||
-                !translations[i].trim()
+                !other ||
+                other !== current
             ) {
-                missing.push(i + 1);
+                continue;
+            }
+
+            const otherEnglish =
+                this.normalizeForDuplicateCheck(
+                    chunk[i].text || ""
+                );
+
+            if (
+                currentEnglish ===
+                otherEnglish
+            ) {
+                continue;
+            }
+
+            if (
+                this.englishMeaningLooksDifferent(
+                    currentEnglish,
+                    otherEnglish
+                )
+            ) {
+
+                return true;
             }
         }
 
-        return missing;
+        return false;
     },
 
 
-    /*
-     * Ask Gemini only for missing subtitles.
-     */
-    async recoverMissing(
+    englishMeaningLooksDifferent(
+        a,
+        b
+    ) {
+
+        const wordsA =
+            new Set(
+                a
+                    .split(/\s+/)
+                    .filter(
+                        word =>
+                            word.length > 2
+                    )
+            );
+
+        const wordsB =
+            new Set(
+                b
+                    .split(/\s+/)
+                    .filter(
+                        word =>
+                            word.length > 2
+                    )
+            );
+
+        if (
+            wordsA.size === 0 ||
+            wordsB.size === 0
+        ) {
+            return false;
+        }
+
+        let common = 0;
+
+        for (
+            const word of wordsA
+        ) {
+
+            if (
+                wordsB.has(word)
+            ) {
+                common++;
+            }
+        }
+
+        const similarity =
+            common /
+            Math.max(
+                wordsA.size,
+                wordsB.size
+            );
+
+        return similarity < 0.5;
+    },
+
+
+    async recoverProblems(
         chunk,
-        missing,
+        translations,
+        problems,
         apiKey,
         customPrompt
     ) {
 
+        const indexes =
+            [
+                ...new Set(
+                    problems
+                        .map(problem => {
+
+                            const match =
+                                problem.match(
+                                    /:(\d+)$/
+                                );
+
+                            return match
+                                ? parseInt(
+                                    match[1],
+                                    10
+                                )
+                                : null;
+                        })
+                        .filter(
+                            number =>
+                                number !== null
+                        )
+                )
+            ];
+
+        if (
+            indexes.length === 0
+        ) {
+
+            throw new Error(
+                "Translation validation failed"
+            );
+        }
+
         const input =
-            missing.map(number => {
+            indexes.map(number => {
 
-                const subtitle =
-                    chunk[number - 1];
+                const index =
+                    number - 1;
 
-                return (
-                    `[[SUBTITLE_${number}]] ` +
-                    subtitle.text
-                );
+                const previous =
+                    index > 0
+                        ? chunk[index - 1].text
+                        : "";
 
-            }).join("\n");
+                const current =
+                    chunk[index].text;
+
+                const next =
+                    index < chunk.length - 1
+                        ? chunk[index + 1].text
+                        : "";
+
+                return `[[SUBTITLE_${number}]]
+
+PREVIOUS CONTEXT:
+${previous}
+
+TARGET ENGLISH:
+${current}
+
+NEXT CONTEXT:
+${next}`;
+
+            }).join("\n\n");
+
 
         const prompt = `${customPrompt}
 
-IMPORTANT:
-Some subtitle translations were missing from a previous response.
+A previous translation response contained one or more suspicious subtitle translations.
 
-Translate ONLY the subtitle IDs listed below.
+Translate ONLY the requested subtitle IDs below.
 
 STRICT RULES:
-- Translate every listed subtitle.
 - Preserve every [[SUBTITLE_X]] ID exactly.
-- Do not skip any ID.
-- Do not change any ID.
-- Do not duplicate any ID.
-- Return ONLY subtitle IDs and Malayalam translations.
+- Each requested ID must appear exactly once.
+- Translate the TARGET ENGLISH belonging to that exact ID.
+- Do not copy the translation of another subtitle.
+- Use PREVIOUS CONTEXT and NEXT CONTEXT only to understand meaning.
+- Do not translate the context as separate subtitles.
 - Use natural spoken Kerala Malayalam.
-- Do not use Tamil, Telugu, Kannada, Hindi, or Bengali.
+- Preserve emotion, personality, slang and profanity.
+- Do not use Tamil, Telugu, Kannada, Hindi or Bengali.
+- Preserve HTML tags exactly.
+- Preserve important numbers, URLs and proper nouns.
+- Return ONLY the requested IDs and their Malayalam translations.
 - Do not add explanations.
 
 FORMAT:
-${missing
-    .map(number =>
-        `[[SUBTITLE_${number}]] Malayalam translation`
-    )
-    .join("\n")}
+[[SUBTITLE_X]]
+Malayalam translation
 
 SUBTITLES:
 ${input}`;
 
-        /*
-         * Retry recovery if necessary.
-         */
+
         let lastError;
 
         for (
@@ -415,55 +856,56 @@ ${input}`;
                     );
 
                 const recovered =
-                    {};
+                    this.parseIdTranslations(
+                        result,
+                        chunk.length
+                    );
 
-                const lines =
-                    result.split(/\r?\n/);
+                for (
+                    const number of indexes
+                ) {
 
-                for (const line of lines) {
-
-                    const match =
-                        line.match(
-                            /^\s*\[\[SUBTITLE_(\d+)\]\]\s*(.+)$/
-                        );
-
-                    if (!match) {
-                        continue;
-                    }
-
-                    const number =
-                        parseInt(
-                            match[1],
-                            10
-                        );
-
-                    const text =
-                        match[2].trim();
+                    const value =
+                        recovered[
+                            number - 1
+                        ];
 
                     if (
-                        missing.includes(number) &&
-                        text
+                        value &&
+                        value.trim()
                     ) {
-                        recovered[number] =
-                            text;
+
+                        translations[
+                            number - 1
+                        ] = value;
                     }
                 }
 
-                const stillMissing =
-                    missing.filter(
-                        number =>
-                            !recovered[number]
+                const remaining =
+                    indexes.filter(
+                        number => {
+
+                            const value =
+                                translations[
+                                    number - 1
+                                ];
+
+                            return (
+                                !value ||
+                                !value.trim()
+                            );
+                        }
                     );
 
                 if (
-                    stillMissing.length === 0
+                    remaining.length === 0
                 ) {
-                    return recovered;
+
+                    return translations;
                 }
 
                 throw new Error(
-                    `Recovery still missing: ` +
-                    `${stillMissing.join(", ")}`
+                    "Recovery still incomplete"
                 );
 
             } catch (error) {
@@ -480,7 +922,9 @@ ${input}`;
 
                 let delay;
 
-                if (error.retryDelay) {
+                if (
+                    error.retryDelay
+                ) {
 
                     delay =
                         this.parseRetryDelay(
@@ -517,15 +961,11 @@ ${input}`;
 
         throw lastError ||
             new Error(
-                "Could not recover missing translations"
+                "Could not recover problematic translations"
             );
     },
 
 
-    /*
-     * Main chunk processing with
-     * automatic 429 handling.
-     */
     async translateWithThrottling(
         chunks,
         apiKey,
@@ -651,6 +1091,7 @@ ${input}`;
 
             translated.forEach(
                 (chunk, index) => {
+
                     results[
                         start + index
                     ] = chunk;
@@ -668,9 +1109,6 @@ ${input}`;
                 );
             }
 
-            /*
-             * Normal spacing.
-             */
             if (
                 start + maxParallel <
                 chunks.length
