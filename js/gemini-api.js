@@ -366,12 +366,89 @@ ${input}`;
             }
 
             if (
-                this.isSuspiciousDuplicate(
-                    chunk,
-                    translations,
-                    i
-                )
-            ) {
+                isSuspiciousDuplicate(
+    chunk,
+    translations,
+    index
+) {
+
+    const current =
+        this.normalizeForDuplicateCheck(
+            translations[index] || ""
+        );
+
+    if (!current || current.length < 12) {
+        return false;
+    }
+
+    const currentEnglish =
+        this.normalizeForDuplicateCheck(
+            chunk[index].text || ""
+        );
+
+    for (
+        let i = 0;
+        i < translations.length;
+        i++
+    ) {
+
+        if (i === index) {
+            continue;
+        }
+
+        const other =
+            this.normalizeForDuplicateCheck(
+                translations[i] || ""
+            );
+
+        if (!other || other !== current) {
+            continue;
+        }
+
+        const otherEnglish =
+            this.normalizeForDuplicateCheck(
+                chunk[i].text || ""
+            );
+
+        if (currentEnglish === otherEnglish) {
+            continue;
+        }
+
+        /*
+         * Identical Malayalam translations can be completely
+         * legitimate. Only flag a duplicate when both English
+         * subtitles are reasonably long and clearly different.
+         */
+
+        const wordsA =
+            currentEnglish
+                .split(/\s+/)
+                .filter(word => word.length > 2);
+
+        const wordsB =
+            otherEnglish
+                .split(/\s+/)
+                .filter(word => word.length > 2);
+
+        if (
+            wordsA.length < 5 ||
+            wordsB.length < 5
+        ) {
+            continue;
+        }
+
+        if (
+            this.englishMeaningLooksDifferent(
+                currentEnglish,
+                otherEnglish
+            )
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+},
 
                 problems.push(
                     `duplicate:${i + 1}`
