@@ -414,39 +414,67 @@ ${input}`;
     // Detect other Indic scripts
     const foreignScriptPatterns = [
 
-        // Devanagari - Hindi, Marathi, Nepali, Sanskrit
-        /[\u0900-\u097F]/g,
+    // Devanagari - Hindi, Marathi, Nepali, Sanskrit
+    /[\u0900-\u097F]/g,
 
-        // Bengali / Assamese
-        /[\u0980-\u09FF]/g,
+    // Bengali / Assamese
+    /[\u0980-\u09FF]/g,
 
-        // Gurmukhi - Punjabi
-        /[\u0A00-\u0A7F]/g,
+    // Gurmukhi - Punjabi
+    /[\u0A00-\u0A7F]/g,
 
-        // Gujarati
-        /[\u0A80-\u0AFF]/g,
+    // Gujarati
+    /[\u0A80-\u0AFF]/g,
 
-        // Oriya / Odia
-        /[\u0B00-\u0B7F]/g,
+    // Odia
+    /[\u0B00-\u0B7F]/g,
 
-        // Tamil
-        /[\u0B80-\u0BFF]/g,
+    // Tamil
+    /[\u0B80-\u0BFF]/g,
 
-        // Telugu
-        /[\u0C00-\u0C7F]/g,
+    // Telugu
+    /[\u0C00-\u0C7F]/g,
 
-        // Kannada
-        /[\u0C80-\u0CFF]/g,
+    // Kannada
+    /[\u0C80-\u0CFF]/g,
 
-        // Sinhala
-        /[\u0D80-\u0DFF]/g,
+    // Sinhala
+    /[\u0D80-\u0DFF]/g,
 
-        // Meitei / Manipuri
-        /[\uABC0-\uABFF]/g,
+    // Thai
+    /[\u0E00-\u0E7F]/g,
 
-        // Ol Chiki - Santali
-        /[\u1C50-\u1C7F]/g
-    ];
+    // Lao
+    /[\u0E80-\u0EFF]/g,
+
+    // Tibetan
+    /[\u0F00-\u0FFF]/g,
+
+    // Myanmar
+    /[\u1000-\u109F]/g,
+
+    // Khmer
+    /[\u1780-\u17FF]/g,
+
+    // Chinese / Japanese Kanji
+    /[\u3400-\u4DBF]/g,
+    /[\u4E00-\u9FFF]/g,
+
+    // Japanese Hiragana
+    /[\u3040-\u309F]/g,
+
+    // Japanese Katakana
+    /[\u30A0-\u30FF]/g,
+
+    // Korean Hangul
+    /[\uAC00-\uD7AF]/g,
+
+    // Meitei / Manipuri
+    /[\uABC0-\uABFF]/g,
+
+    // Ol Chiki - Santali
+    /[\u1C50-\u1C7F]/g
+];
 
     let foreignScriptCount = 0;
 
@@ -463,7 +491,7 @@ ${input}`;
     // Any meaningful amount of another
     // Indic script means contamination.
     if (
-        foreignScriptCount >= 2
+        foreignScriptCount >= 1
     ) {
         return true;
     }
