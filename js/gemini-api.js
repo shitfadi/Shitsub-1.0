@@ -558,27 +558,43 @@ ${input}`;
 
 
     hasBrokenImportantTokens(
-        original,
-        translated
-    ) {
+    original,
+    translated
+) {
 
-        const tokens =
-            this.extractImportantTokens(
-                original
-            );
+    const tokens =
+        this.extractImportantTokens(
+            original
+        );
 
-        for (const token of tokens) {
+    for (const token of tokens) {
 
-            if (
-                !translated.includes(token)
-            ) {
+        const normalizedToken =
+            token
+                .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
+                .trim();
 
-                return true;
-            }
+        if (!normalizedToken) {
+            continue;
         }
 
-        return false;
-    },
+        const normalizedTranslated =
+            translated
+                .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
+                .trim();
+
+        if (
+            !normalizedTranslated.includes(
+                normalizedToken
+            )
+        ) {
+
+            return true;
+        }
+    }
+
+    return false;
+},
 
 
     extractImportantTokens(
