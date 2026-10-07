@@ -1,802 +1,659 @@
-@import url(‘https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap’);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* =========================================================
-CINEMATIC VIDEO BACKGROUND
+   CINEMATIC VIDEO BACKGROUND
 ========================================================= */
 
 .background-video {
-position: fixed;
-inset: 0;
-
-width: 100%;
-height: 100%;
-object-fit: cover;
-z-index: -3;
-pointer-events: none;
-background: #070b09;
-transform: scale(1.02);
-
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -3;
+    pointer-events: none;
+    background: #070b09;
+    transform: scale(1.02);
 }
 
 .video-overlay {
-position: fixed;
-inset: 0;
-
-z-index: -2;
-pointer-events: none;
-background:
-    linear-gradient(
-        180deg,
-        rgba(4, 8, 6, 0.48) 0%,
-        rgba(4, 8, 6, 0.34) 40%,
-        rgba(4, 8, 6, 0.68) 100%
-    );
-backdrop-filter: blur(4px);
--webkit-backdrop-filter: blur(4px);
-
-}
-
-.app {
-position: relative;
-z-index: 1;
-}
-
-@media (max-width: 600px) {
-
-.video-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
     background:
         linear-gradient(
             180deg,
-            rgba(4, 8, 6, 0.55) 0%,
-            rgba(4, 8, 6, 0.35) 40%,
-            rgba(4, 8, 6, 0.72) 100%
+            rgba(4, 8, 6, 0.48) 0%,
+            rgba(4, 8, 6, 0.34) 40%,
+            rgba(4, 8, 6, 0.68) 100%
         );
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
+.app {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 600px) {
+    .video-overlay {
+        background:
+            linear-gradient(
+                180deg,
+                rgba(4, 8, 6, 0.55) 0%,
+                rgba(4, 8, 6, 0.35) 40%,
+                rgba(4, 8, 6, 0.72) 100%
+            );
+    }
 }
 
 /* =========================================================
-SHITSUB - PREMIUM LIQUID GLASS UI
+   SHITSUB - PREMIUM LIQUID GLASS UI
 ========================================================= */
 
 :root {
-
---bg: #070b09;
---bg-soft: #0b110e;
---glass: rgba(255, 255, 255, 0.065);
---glass-strong: rgba(255, 255, 255, 0.095);
---glass-border: rgba(255, 255, 255, 0.12);
---text: #f4f7f5;
---muted: #9ca8a1;
---accent: #b9ffd8;
---accent-soft: rgba(185, 255, 216, 0.18);
---success: #8ff0b8;
---danger: #ff8f8f;
---radius: 22px;
-
+    --bg: #070b09;
+    --bg-soft: #0b110e;
+    --glass: rgba(255, 255, 255, 0.065);
+    --glass-strong: rgba(255, 255, 255, 0.095);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --text: #f4f7f5;
+    --muted: #9ca8a1;
+    --accent: #b9ffd8;
+    --accent-soft: rgba(185, 255, 216, 0.18);
+    --success: #8ff0b8;
+    --danger: #ff8f8f;
+    --radius: 22px;
 }
 
 /* =========================================================
-RESET
+   RESET
 ========================================================= */
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    }
+}
 
 html {
-min-height: 100%;
-scroll-behavior: smooth;
+    min-height: 100%;
+    scroll-behavior: smooth;
 }
 
 body {
-
-min-height: 100vh;
-font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-color: var(--text);
-background:
-    radial-gradient(
-        circle at 15% 10%,
-        rgba(110, 255, 180, 0.08),
-        transparent 35%
-    ),
-    radial-gradient(
-        circle at 85% 80%,
-        rgba(80, 150, 255, 0.055),
-        transparent 35%
-    ),
-    var(--bg);
--webkit-font-smoothing: antialiased;
-text-rendering: optimizeLegibility;
-
+    min-height: 100vh;
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    color: var(--text);
+    background:
+        radial-gradient(
+            circle at 15% 10%,
+            rgba(110, 255, 180, 0.08),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 85% 80%,
+            rgba(80, 150, 255, 0.055),
+            transparent 35%
+        ),
+        var(--bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
 
 /* =========================================================
-APP
+   APP
 ========================================================= */
 
 .app {
-
-width:
-    min(
-        760px,
-        calc(100% - 32px)
-    );
-margin: 0 auto;
-padding:
-    44px
-    0
-    60px;
-position: relative;
-
+    width: min(760px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 44px 0 60px;
+    position: relative;
 }
 
 /* =========================================================
-HEADER
+   HEADER
 ========================================================= */
 
 .header {
-
-padding:
-    28px 4px 34px;
-text-align: center;
-
+    padding: 28px 4px 34px;
+    text-align: center;
 }
 
 .brand {
-
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 9px;
-
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
 }
 
 .logo {
-
-font-size:
-    clamp(38px, 7vw, 56px);
-font-weight: 800;
-letter-spacing: -0.055em;
-line-height: 1;
-color: #ffffff;
-text-shadow:
-    0 0 35px rgba(185, 255, 216, 0.16);
-
+    font-size: clamp(38px, 7vw, 56px);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 1;
+    color: #ffffff;
+    text-shadow: 0 0 35px rgba(185, 255, 216, 0.16);
 }
 
 .tagline {
-
-color:
-    rgba(230, 238, 233, 0.72);
-font-size: 13px;
-font-weight: 500;
-letter-spacing: 0.01em;
-
+    color: rgba(230, 238, 233, 0.72);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }
 
 /* =========================================================
-GLASS CARDS
+   GLASS CARDS
 ========================================================= */
 
 .card {
-
-position: relative;
-margin-bottom: 16px;
-padding: 23px;
-border-radius: var(--radius);
-background:
-    linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.075),
-        rgba(255, 255, 255, 0.035)
-    );
-border:
-    1px solid var(--glass-border);
-box-shadow:
-    0 20px 55px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.055);
-backdrop-filter:
-    blur(24px) saturate(125%);
--webkit-backdrop-filter:
-    blur(24px) saturate(125%);
-overflow: hidden;
-
+    position: relative;
+    margin-bottom: 16px;
+    padding: 23px;
+    border-radius: var(--radius);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.075),
+            rgba(255, 255, 255, 0.035)
+        );
+    border: 1px solid var(--glass-border);
+    box-shadow:
+        0 20px 55px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.055);
+    backdrop-filter: blur(24px) saturate(125%);
+    -webkit-backdrop-filter: blur(24px) saturate(125%);
+    overflow: hidden;
 }
 
 .card::before {
-
-content: "";
-position: absolute;
-top: 0;
-left: 0;
-right: 0;
-height: 1px;
-background:
-    linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.22),
-        transparent
-    );
-opacity: 0.8;
-
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.22),
+            transparent
+        );
+    opacity: 0.8;
 }
 
 /* =========================================================
-SECTION TITLES
+   SECTION TITLES
 ========================================================= */
 
 .section-title {
-
-margin-bottom: 18px;
-font-size: 15px;
-font-weight: 700;
-letter-spacing: -0.01em;
-color: #ffffff;
-
+    margin-bottom: 18px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #ffffff;
 }
 
 /* =========================================================
-LABELS
+   LABELS
 ========================================================= */
 
 label {
-
-display: block;
-margin-bottom: 8px;
-font-size: 12px;
-font-weight: 600;
-color: var(--muted);
-
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
 }
 
 /* =========================================================
-INPUTS
+   INPUTS
 ========================================================= */
 
-input[type=“password”],
-input[type=“text”],
+input[type="password"],
+input[type="text"],
 textarea {
-
-width: 100%;
-border:
-    1px solid rgba(255, 255, 255, 0.105);
-border-radius: 14px;
-outline: none;
-color: var(--text);
-background:
-    rgba(0, 0, 0, 0.24);
-box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.22);
-transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease;
-
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.105);
+    border-radius: 14px;
+    outline: none;
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.24);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+    transition:
+        border-color 180ms ease,
+        background 180ms ease,
+        box-shadow 180ms ease;
 }
 
-input[type=“password”],
-input[type=“text”] {
-
-height: 50px;
-padding:
-    0 15px;
-font-size: 14px;
-
+input[type="password"],
+input[type="text"] {
+    height: 50px;
+    padding: 0 15px;
+    font-size: 14px;
 }
 
 textarea {
-
-min-height: 150px;
-padding: 14px;
-resize: vertical;
-font-family: inherit;
-font-size: 14px;
-line-height: 1.55;
-
+    min-height: 150px;
+    padding: 14px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.55;
 }
 
 input::placeholder,
 textarea::placeholder {
-
-color: #68746d;
-
+    color: #68746d;
 }
 
 input:focus,
 textarea:focus {
-
-border-color:
-    rgba(185, 255, 216, 0.42);
-background:
-    rgba(0, 0, 0, 0.30);
-box-shadow:
-    0 0 0 3px rgba(185, 255, 216, 0.07),
-    inset 0 1px 2px rgba(0, 0, 0, 0.25);
-
+    border-color: rgba(185, 255, 216, 0.42);
+    background: rgba(0, 0, 0, 0.30);
+    box-shadow:
+        0 0 0 3px rgba(185, 255, 216, 0.07),
+        inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 input:disabled {
-
-opacity: 0.62;
-cursor: not-allowed;
-
+    opacity: 0.62;
+    cursor: not-allowed;
 }
 
 /* =========================================================
-API ACTIONS
+   API ACTIONS
 ========================================================= */
 
 .api-actions {
-
-display: flex;
-gap: 10px;
-margin-top: 12px;
-
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
 }
 
 /* =========================================================
-BUTTON BASE
+   BUTTON BASE
 ========================================================= */
 
 button {
-
-font-family: inherit;
-border: 0;
-cursor: pointer;
--webkit-tap-highlight-color: transparent;
-transition:
-    transform 160ms ease,
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    opacity 160ms ease;
-
+    font-family: inherit;
+    border: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        transform 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        opacity 160ms ease;
 }
 
 button:disabled {
-
-opacity: 0.55;
-cursor: not-allowed;
-
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 /* =========================================================
-LIQUID GLASS SECONDARY BUTTON
+   LIQUID GLASS SECONDARY BUTTON
 ========================================================= */
 
 .secondary-btn,
 .save-btn {
-
-min-height: 46px;
-padding:
-    0 18px;
-border-radius: 13px;
-color: #e9f3ed;
-background:
-    linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.10),
-        rgba(255, 255, 255, 0.045)
-    );
-border:
-    1px solid rgba(255, 255, 255, 0.12);
-box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 8px 25px rgba(0, 0, 0, 0.16);
-font-size: 13px;
-font-weight: 600;
-
+    min-height: 46px;
+    padding: 0 18px;
+    border-radius: 13px;
+    color: #e9f3ed;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.10),
+            rgba(255, 255, 255, 0.045)
+        );
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.07),
+        0 8px 25px rgba(0, 0, 0, 0.16);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .secondary-btn:hover,
 .save-btn:hover {
-
-background:
-    rgba(255, 255, 255, 0.12);
-border-color:
-    rgba(255, 255, 255, 0.20);
-transform:
-    translateY(-1px);
-
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.20);
+    transform: translateY(-1px);
 }
 
 .secondary-btn:active,
 .save-btn:active {
+    transform: scale(0.97);
+}
 
-transform:
-    scale(0.97);
+/* Translate and Download use the SAME button style */
 
+.translate-btn,
+.download-btn {
+    margin-top: 0;
 }
 
 /* =========================================================
-FILE INPUT
+   FILE INPUT
 ========================================================= */
 
 .file-input {
-
-width: 100%;
-padding: 12px;
-border-radius: 14px;
-color: var(--muted);
-background:
-    rgba(0, 0, 0, 0.24);
-border:
-    1px solid rgba(255, 255, 255, 0.10);
-font-family: inherit;
-font-size: 13px;
-
+    width: 100%;
+    padding: 12px;
+    border-radius: 14px;
+    color: var(--muted);
+    background: rgba(0, 0, 0, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    font-family: inherit;
+    font-size: 13px;
 }
 
 .file-input::file-selector-button {
-
-margin-right: 12px;
-padding:
-    9px 13px;
-border: 0;
-border-radius: 10px;
-color: #07100b;
-background: #c8f8da;
-font-family: inherit;
-font-size: 12px;
-font-weight: 700;
-cursor: pointer;
-
+    margin-right: 12px;
+    padding: 9px 13px;
+    border: 0;
+    border-radius: 10px;
+    color: #07100b;
+    background: #c8f8da;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
 /* =========================================================
-PROMPT EDITOR
+   PROMPT EDITOR
 ========================================================= */
 
 .prompt-editor {
-
-margin-top: 14px;
-padding-top: 16px;
-border-top:
-    1px solid rgba(255, 255, 255, 0.07);
-
+    margin-top: 14px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .prompt-editor .save-btn {
-
-margin-top: 12px;
-
+    margin-top: 12px;
 }
 
 .prompt-info {
-
-margin-top: 9px;
-color: var(--muted);
-font-size: 11px;
-line-height: 1.5;
-
+    margin-top: 9px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
 }
 
 /* =========================================================
-STATUS
+   STATUS
 ========================================================= */
 
 .status-card {
-
-animation:
-    statusEnter 450ms ease both;
-
+    animation: statusEnter 450ms ease both;
 }
 
 @keyframes statusEnter {
-
-from {
-    opacity: 0;
-    transform:
-        translateY(10px);
-}
-to {
-    opacity: 1;
-    transform:
-        translateY(0);
-}
-
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .progress-header {
-
-display: flex;
-align-items: center;
-justify-content: space-between;
-gap: 16px;
-margin-bottom: 13px;
-
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 13px;
 }
 
 .status-text {
-
-color: #e7eee9;
-font-size: 13px;
-font-weight: 600;
-
+    color: #e7eee9;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .progress-percent {
-
-flex-shrink: 0;
-color: var(--accent);
-font-size: 13px;
-font-weight: 700;
-
+    flex-shrink: 0;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
 }
 
 /* =========================================================
-PROGRESS BAR
+   PROGRESS BAR
 ========================================================= */
 
 .progress-container {
-
-position: relative;
-width: 100%;
-height: 7px;
-overflow: hidden;
-border-radius: 999px;
-background:
-    rgba(255, 255, 255, 0.07);
-
+    position: relative;
+    width: 100%;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
 }
 
 .progress-bar {
-
-position: relative;
-width: 0%;
-height: 100%;
-border-radius: inherit;
-background:
-    linear-gradient(
-        90deg,
-        #8debb2,
-        #d7ffe5
-    );
-box-shadow:
-    0 0 18px rgba(150, 255, 190, 0.30);
-transition:
-    width 450ms cubic-bezier(.22, 1, .36, 1);
-
+    position: relative;
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background:
+        linear-gradient(
+            90deg,
+            #8debb2,
+            #d7ffe5
+        );
+    box-shadow: 0 0 18px rgba(150, 255, 190, 0.30);
+    transition: width 450ms cubic-bezier(.22, 1, .36, 1);
 }
 
 .progress-bar::after {
-
-content: "";
-position: absolute;
-top: 0;
-bottom: 0;
-width: 80px;
-background:
-    linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.45),
-        transparent
-    );
-animation:
-    progressShine 1.7s linear infinite;
-
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.45),
+            transparent
+        );
+    animation: progressShine 1.7s linear infinite;
 }
 
 @keyframes progressShine {
-
-from {
-    transform:
-        translateX(-100px);
-}
-to {
-    transform:
-        translateX(760px);
-}
-
+    from {
+        transform: translateX(-100px);
+    }
+    to {
+        transform: translateX(760px);
+    }
 }
 
 /* =========================================================
-ACTIVITY TEXT
+   ACTIVITY TEXT
 ========================================================= */
 
 .activity-text {
-
-position: relative;
-margin-top: 13px;
-color: var(--muted);
-font-size: 11px;
-animation:
-    activityPulse 1.8s ease-in-out infinite;
-
+    position: relative;
+    margin-top: 13px;
+    color: var(--muted);
+    font-size: 11px;
+    animation: activityPulse 1.8s ease-in-out infinite;
 }
 
 @keyframes activityPulse {
-
-0%,
-100% {
-    opacity: 0.55;
-}
-50% {
-    opacity: 1;
-}
-
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+    50% {
+        opacity: 1;
+    }
 }
 
 /* =========================================================
-RESULT
+   RESULT
 ========================================================= */
 
 .result-card {
-
-animation:
-    resultEnter 500ms ease both;
-
+    animation: resultEnter 500ms ease both;
 }
 
 @keyframes resultEnter {
-
-from {
-    opacity: 0;
-    transform:
-        translateY(14px)
-        scale(0.985);
-}
-to {
-    opacity: 1;
-    transform:
-        translateY(0)
-        scale(1);
-}
-
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .result-info {
-
-color: var(--muted);
-font-size: 13px;
-line-height: 1.6;
-
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
 }
 
 .success {
-
-color: var(--success);
-font-weight: 600;
-
+    color: var(--success);
+    font-weight: 600;
 }
 
 /* =========================================================
-ERROR
+   ERROR
 ========================================================= */
 
 .error {
-
-margin-top: 12px;
-color: var(--danger);
-font-size: 12px;
-line-height: 1.5;
-
+    margin-top: 12px;
+    color: var(--danger);
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 /* =========================================================
-FOOTER
+   FOOTER
 ========================================================= */
 
 .footer {
-
-padding:
-    25px 8px 0;
-color: #66716b;
-font-size: 10px;
-line-height: 1.8;
-text-align: center;
-
+    padding: 25px 8px 0;
+    color: #66716b;
+    font-size: 10px;
+    line-height: 1.8;
+    text-align: center;
 }
 
 /* =========================================================
-ANDROID TV / KEYBOARD FOCUS
+   ANDROID TV / KEYBOARD FOCUS
 ========================================================= */
 
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 .file-input:focus-visible {
-
-outline: none;
-border-color:
-    rgba(185, 255, 216, 0.55);
-box-shadow:
-    0 0 0 3px rgba(185, 255, 216, 0.13),
-    0 0 25px rgba(185, 255, 216, 0.10);
-
+    outline: none;
+    border-color: rgba(185, 255, 216, 0.55);
+    box-shadow:
+        0 0 0 3px rgba(185, 255, 216, 0.13),
+        0 0 25px rgba(185, 255, 216, 0.10);
 }
 
 button:focus-visible {
-
-transform:
-    scale(1.025);
-
+    transform: scale(1.025);
 }
 
 /* =========================================================
-MOBILE
+   MOBILE
 ========================================================= */
 
 @media (max-width: 600px) {
+    .app {
+        width: min(100% - 20px, 760px);
+        padding-top: 27px;
+        padding-bottom: 40px;
+    }
 
-.app {
-    width:
-        min(
-            calc(100% - 20px),
-            760px
-        );
-    padding-top: 27px;
-    padding-bottom: 40px;
-}
-.header {
-    padding-bottom: 25px;
-}
-.logo {
-    font-size: 38px;
-}
-.tagline {
-    font-size: 11px;
-}
-.card {
-    padding: 18px;
-    border-radius: 19px;
-}
-.api-actions {
-    flex-direction: column;
-}
-.secondary-btn,
-.save-btn {
-    width: 100%;
-}
+    .header {
+        padding-bottom: 25px;
+    }
 
+    .logo {
+        font-size: 38px;
+    }
+
+    .tagline {
+        font-size: 11px;
+    }
+
+    .card {
+        padding: 18px;
+        border-radius: 19px;
+    }
+
+    .api-actions {
+        flex-direction: column;
+    }
+
+    .secondary-btn,
+    .save-btn {
+        width: 100%;
+    }
+
+    .translate-btn,
+    .download-btn {
+        width: 100%;
+    }
 }
 
 /* =========================================================
-VERY SMALL SCREENS
+   VERY SMALL SCREENS
 ========================================================= */
 
 @media (max-width: 380px) {
+    .app {
+        width: calc(100% - 14px);
+    }
 
-.app {
-    width:
-        calc(100% - 14px);
-}
-.card {
-    padding: 16px;
-}
-.logo {
-    font-size: 34px;
-}
+    .card {
+        padding: 16px;
+    }
 
+    .logo {
+        font-size: 34px;
+    }
 }
 
 /* =========================================================
-REDUCE MOTION
+   REDUCE MOTION
 ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-
-*,
-*::before,
-*::after {
-    animation-duration:
-        0.01ms !important;
-    animation-iteration-count:
-        1 !important;
-    transition-duration:
-        0.01ms !important;
-    scroll-behavior:
-        auto !important;
-}
-
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
