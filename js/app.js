@@ -17,6 +17,7 @@ const promptEditor = document.getElementById("promptEditor");
 const customPrompt = document.getElementById("customPrompt");
 
 const translateBtn = document.getElementById("translateBtn");
+const translateButtonText = document.querySelector(".translate-text");
 const mainError = document.getElementById("mainError");
 
 const statusCard = document.getElementById("statusCard");
@@ -438,8 +439,7 @@ async function handleTranslate() {
     // Start translation
     translateBtn.disabled = true;
 
-    translateBtn.textContent =
-        "Translating...";
+    translateButtonText.textContent = "Translating...";
 
 
     // Reset progress
@@ -623,8 +623,7 @@ async function handleTranslate() {
 
         translateBtn.disabled = false;
 
-        translateBtn.textContent =
-            "Translate SRT";
+        translateButtonText.textContent = "Translate SRT";
     }
 
 }
