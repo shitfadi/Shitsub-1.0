@@ -1331,3 +1331,242 @@ button:focus-visible {
         height: 60px !important;
     }
 }
+/* =========================================================
+   FINAL TRANSLATE + DOWNLOAD BUTTON OVERRIDE
+   ========================================================= */
+
+.translate-button-wrap,
+.download-button-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.translate-fx-btn,
+.download-fx-btn {
+    position: relative !important;
+    overflow: hidden !important;
+    isolation: isolate !important;
+
+    width: 100% !important;
+    max-width: 340px !important;
+    height: 64px !important;
+    min-height: 64px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 14px !important;
+
+    padding: 0 24px !important;
+    margin: 0 !important;
+
+    border-radius: 18px !important;
+    border: 1px solid rgba(255, 255, 255, 0.20) !important;
+
+    color: #07100b !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #d9ffe8 0%,
+            #b8f5d0 45%,
+            #9ce8bd 100%
+        ) !important;
+
+    box-shadow:
+        0 14px 35px rgba(90, 255, 160, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.80) !important;
+
+    font-family: inherit !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+
+    cursor: pointer !important;
+
+    transition:
+        transform 220ms ease,
+        box-shadow 220ms ease !important;
+}
+
+
+/* TEXT */
+
+.translate-text,
+.download-text {
+    position: relative !important;
+    z-index: 5 !important;
+
+    color: #07100b !important;
+
+    font-size: 15px !important;
+    font-weight: 800 !important;
+
+    pointer-events: none;
+}
+
+
+/* ICON */
+
+.translate-btn-icon,
+.download-btn-icon {
+    position: relative !important;
+    z-index: 5 !important;
+
+    width: 21px !important;
+    height: 21px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    color: #07100b !important;
+
+    pointer-events: none;
+
+    transition:
+        transform 300ms ease !important;
+}
+
+.translate-btn-icon svg,
+.download-btn-icon svg {
+    width: 100% !important;
+    height: 100% !important;
+
+    display: block !important;
+
+    fill: currentColor;
+}
+
+
+/* TRANSLATE CIRCLE */
+
+.translate-circle {
+    position: absolute !important;
+
+    width: 22px !important;
+    height: 22px !important;
+
+    right: 22px !important;
+    top: 50% !important;
+
+    transform: translateY(-50%) !important;
+
+    border-radius: 50% !important;
+
+    background: rgba(255, 255, 255, 0.32) !important;
+
+    z-index: 1 !important;
+
+    pointer-events: none;
+
+    transition:
+        width 500ms cubic-bezier(.16, 1, .3, 1),
+        height 500ms cubic-bezier(.16, 1, .3, 1),
+        transform 500ms cubic-bezier(.16, 1, .3, 1) !important;
+}
+
+
+/* DOWNLOAD CIRCLE */
+
+.download-fx-btn::before {
+    content: "" !important;
+
+    position: absolute !important;
+
+    width: 22px !important;
+    height: 22px !important;
+
+    right: 22px !important;
+    top: 50% !important;
+
+    transform: translateY(-50%) !important;
+
+    border-radius: 50% !important;
+
+    background: rgba(255, 255, 255, 0.32) !important;
+
+    z-index: 1 !important;
+
+    pointer-events: none;
+
+    transition:
+        width 500ms cubic-bezier(.16, 1, .3, 1),
+        height 500ms cubic-bezier(.16, 1, .3, 1),
+        transform 500ms cubic-bezier(.16, 1, .3, 1) !important;
+}
+
+
+/* HOVER */
+
+.translate-fx-btn:hover,
+.download-fx-btn:hover {
+    transform: translateY(-2px) !important;
+
+    box-shadow:
+        0 18px 45px rgba(90, 255, 160, 0.30),
+        inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
+}
+
+
+.translate-fx-btn:hover .translate-circle,
+.download-fx-btn:hover::before {
+    width: 340px !important;
+    height: 340px !important;
+
+    transform:
+        translate(100px, -50%) !important;
+}
+
+
+.translate-fx-btn:hover .translate-btn-icon {
+    transform: translateX(4px) !important;
+}
+
+
+.download-fx-btn:hover .download-btn-icon {
+    transform: translateY(3px) !important;
+}
+
+
+/* CLICK */
+
+.translate-fx-btn:active,
+.download-fx-btn:active {
+    transform: scale(0.97) !important;
+}
+
+
+/* FOCUS */
+
+.translate-fx-btn:focus-visible,
+.download-fx-btn:focus-visible {
+    outline: 2px solid rgba(210, 255, 230, 0.85) !important;
+    outline-offset: 4px !important;
+}
+
+
+/* DISABLED */
+
+.translate-fx-btn:disabled,
+.download-fx-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+    .translate-fx-btn,
+    .download-fx-btn {
+        width: 100% !important;
+        max-width: 340px !important;
+        height: 60px !important;
+        min-height: 60px !important;
+    }
+
+}
