@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -33,257 +33,228 @@
 <title>ShitSub - SRT Translator</title>
 <link
     rel="stylesheet"
-    href="css/style.css?v=11"
+    href="css/style.css?v=12"
 >
 </head>
 <body>
-<!-- BACKGROUND VIDEO -->
+<!-- =====================================================
+     BACKGROUND VIDEO
+====================================================== -->
+
 <video
-    id="backgroundVideo"
-    class="background-video"
-    autoplay
-    muted
-    loop
-    playsinline
-    preload="auto"
+id=“backgroundVideo”
+class=“background-video”
+autoplay
+muted
+loop
+playsinline
+preload=“auto”
+
+<source
+    src="assets/background.mp4"
+    type="video/mp4"
 >
-    <source
-        src="assets/background.mp4"
-        type="video/mp4"
-    >
 </video>
 <div class="video-overlay"></div>
-<!-- MAIN APP -->
+<!-- =====================================================
+     MAIN APP
+====================================================== -->
 <div class="app">
-    <!-- =================================================
-         HEADER
-    ================================================== -->
-    <header class="header">
-        <div class="brand">
-            <div class="logo">
-                ShitSub
-            </div>
-            <div class="tagline">
-                English SRT → Natural Kerala Malayalam
-            </div>
+<!-- =================================================
+     HEADER
+================================================== -->
+<header class="header">
+    <div class="brand">
+        <div class="logo">
+            ShitSub
         </div>
-    </header>
-    <!-- =================================================
-         GEMINI API KEY
-    ================================================== -->
-    <section class="card api-card">
-        <div class="section-title">
-            Gemini API Key
+        <div class="tagline">
+            English SRT → Natural Kerala Malayalam
         </div>
-        <label for="apiKey">
-            API Key
-        </label>
-        <input
-            id="apiKey"
-            type="password"
-            placeholder="Enter your Gemini API key"
-            autocomplete="off"
-            spellcheck="false"
-        >
-        <div class="api-actions">
-            <button
-                id="saveApiKeyBtn"
-                type="button"
-                class="secondary-btn"
-            >
-                Save API Key
-            </button>
-            <button
-                id="editApiKeyBtn"
-                type="button"
-                class="secondary-btn"
-                style="display:none;"
-            >
-                Edit API Key
-            </button>
-        </div>
-        <div
-            id="apiKeyStatus"
-            class="prompt-info"
-        ></div>
-    </section>
-    <!-- =================================================
-         SRT FILE
-    ================================================== -->
-    <section class="card">
-        <div class="section-title">
-            Subtitle File
-        </div>
-        <label for="srtFile">
-            Select English SRT
-        </label>
-        <input
-            id="srtFile"
-            class="file-input"
-            type="file"
-            accept=".srt,text/plain,application/x-subrip"
-        >
-        <div
-            id="fileName"
-            class="prompt-info"
-        >
-            No file selected.
-        </div>
-    </section>
-    <!-- =================================================
-         CUSTOM PROMPT
-    ================================================== -->
-    <section class="card">
-        <div class="section-title">
-            Custom Prompt
-        </div>
+    </div>
+</header>
+<!-- =================================================
+     GEMINI API KEY
+================================================== -->
+<section class="card api-card">
+    <div class="section-title">
+        Gemini API Key
+    </div>
+    <label for="apiKey">
+        API Key
+    </label>
+    <input
+        id="apiKey"
+        type="password"
+        placeholder="Enter your Gemini API key"
+        autocomplete="off"
+        spellcheck="false"
+    >
+    <div class="api-actions">
         <button
-            id="editPromptBtn"
+            id="saveApiKeyBtn"
             type="button"
             class="secondary-btn"
         >
-            Edit Prompt
+            Save API Key
         </button>
-        <div
-            id="promptEditor"
-            class="prompt-editor"
+        <button
+            id="editApiKeyBtn"
+            type="button"
+            class="secondary-btn"
+            style="display:none;"
         >
-            <label for="customPrompt">
-                Translation Prompt
-            </label>
-            <textarea
-                id="customPrompt"
-                placeholder="Enter your custom subtitle translation instructions..."
-            ></textarea>
-            <button
-                id="savePromptBtn"
-                type="button"
-                class="save-btn"
-            >
-                Save Prompt
-            </button>
-            <div class="prompt-info">
-                Your saved prompt will be remembered on this device.
-            </div>
-        </div>
-    </section>
-    <!-- =================================================
-         TRANSLATE
-    ================================================== -->
-    <section class="card translate-card">
-        <div class="translate-button-wrap">
-            <button
-                id="translateBtn"
-                type="button"
-                class="translate-fx-btn"
-            >
-                <span class="translate-text">
-                    Translate SRT
-                </span>
-                <span class="translate-btn-icon">
-                    <svg
-                        viewBox="0 0 1024 1024"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            d="M779.180132 473.232045 322.354755 16.406668c-21.413706-21.413706-56.121182-21.413706-77.534887 0-21.413706 21.413706-21.413706 56.122205 0 77.534887l418.057421 418.057421L244.819868 930.057421c-21.413706-21.413706-56.122205-77.534887 0-77.534887 10.706853 10.706853 24.759917 16.059767 38.767955 16.059767s28.061103-5.353938 38.767955-16.059767L779.180132 550.767955C800.593837 529.35425 800.593837 494.64575 779.180132 473.232045z"
-                        ></path>
-                    </svg>
-                </span>
-                <span class="translate-circle"></span>
-            </button>
-        </div>
-        <div
-            id="mainError"
-            class="error"
-        ></div>
-    </section>
-    <!-- =================================================
-         TRANSLATION PROGRESS
-    ================================================== -->
-    <section
-        id="statusCard"
-        class="card status-card"
+            Edit API Key
+        </button>
+    </div>
+    <div
+        id="apiKeyStatus"
+        class="prompt-info"
+    ></div>
+</section>
+<!-- =================================================
+     SRT FILE
+================================================== -->
+<section class="card">
+    <div class="section-title">
+        Subtitle File
+    </div>
+    <label for="srtFile">
+        Select English SRT
+    </label>
+    <input
+        id="srtFile"
+        class="file-input"
+        type="file"
+        accept=".srt,text/plain,application/x-subrip"
     >
-        <div class="section-title">
-            Translation Progress
-        </div>
-        <div class="progress-header">
-            <div
-                id="statusText"
-                class="status-text"
-            >
-                Getting your subtitles ready...
-            </div>
-            <div
-                id="progressPercent"
-                class="progress-percent"
-            >
-                0%
-            </div>
-        </div>
-        <div class="progress-container">
-            <div
-                id="progressBar"
-                class="progress-bar"
-            ></div>
-        </div>
-        <div
-            id="activityText"
-            class="activity-text"
+    <div
+        id="fileName"
+        class="prompt-info"
+    >
+        No file selected.
+    </div>
+</section>
+<!-- =================================================
+     CUSTOM PROMPT
+================================================== -->
+<section class="card">
+    <div class="section-title">
+        Custom Prompt
+    </div>
+    <button
+        id="editPromptBtn"
+        type="button"
+        class="secondary-btn"
+    >
+        Edit Prompt
+    </button>
+    <div
+        id="promptEditor"
+        class="prompt-editor"
+    >
+        <label for="customPrompt">
+            Translation Prompt
+        </label>
+        <textarea
+            id="customPrompt"
+            placeholder="Enter your custom subtitle translation instructions..."
+        ></textarea>
+        <button
+            id="savePromptBtn"
+            type="button"
+            class="save-btn"
         >
-            Reading subtitles...
+            Save Prompt
+        </button>
+        <div class="prompt-info">
+            Your saved prompt will be remembered on this device.
         </div>
-    </section>
-    <!-- =================================================
-         RESULT
-    ================================================== -->
-    <section
-        id="resultCard"
-        class="card result-card"
+    </div>
+</section>
+<!-- =================================================
+     TRANSLATE
+================================================== -->
+<section class="card translate-card">
+    <button
+        id="translateBtn"
+        type="button"
+        class="secondary-btn translate-btn"
     >
-        <div class="section-title">
-            Translation Complete
+        Translate SRT
+    </button>
+    <div
+        id="mainError"
+        class="error"
+    ></div>
+</section>
+<!-- =================================================
+     TRANSLATION PROGRESS
+================================================== -->
+<section
+    id="statusCard"
+    class="card status-card"
+>
+    <div class="section-title">
+        Translation Progress
+    </div>
+    <div class="progress-header">
+        <div
+            id="statusText"
+            class="status-text"
+        >
+            Getting your subtitles ready...
         </div>
         <div
-            id="resultInfo"
-            class="result-info"
-        ></div>
-        <div class="download-button-wrap">
-            <button
-                id="downloadBtn"
-                type="button"
-                class="download-fx-btn"
-            >
-                <span class="download-text">
-                    Download Malayalam SRT
-                </span>
-                <span class="download-btn-icon">
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            d="M12 3V15M12 15L7 10M12 15L17 10M5 21H19"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                    </svg>
-                </span>
-            </button>
+            id="progressPercent"
+            class="progress-percent"
+        >
+            0%
         </div>
-    </section>
-    <!-- =================================================
-         FOOTER
-    ================================================== -->
-    <footer class="footer">
-        ShitSub • English SRT → Colloquial Kerala Malayalam
-        <br>
-        Created by Fadi
-    </footer>
+    </div>
+    <div class="progress-container">
+        <div
+            id="progressBar"
+            class="progress-bar"
+        ></div>
+    </div>
+    <div
+        id="activityText"
+        class="activity-text"
+    >
+        Reading subtitles...
+    </div>
+</section>
+<!-- =================================================
+     RESULT
+================================================== -->
+<section
+    id="resultCard"
+    class="card result-card"
+>
+    <div class="section-title">
+        Translation Complete
+    </div>
+    <div
+        id="resultInfo"
+        class="result-info"
+    ></div>
+    <button
+        id="downloadBtn"
+        type="button"
+        class="secondary-btn download-btn"
+    >
+        Download Malayalam SRT
+    </button>
+</section>
+<!-- =================================================
+     FOOTER
+================================================== -->
+<footer class="footer">
+    ShitSub • English SRT → Colloquial Kerala Malayalam
+    <br>
+    Created by Fadi
+</footer>
 </div>
 <!-- =====================================================
      JAVASCRIPT
@@ -292,6 +263,6 @@
 <script src="js/srt-parser.js"></script>
 <script src="js/gemini-api.js?v=17"></script>
 <script src="js/translator.js"></script>
-<script src="js/app.js?v=4"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>
