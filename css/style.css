@@ -657,31 +657,157 @@ button:focus-visible {
         scroll-behavior: auto !important;
     }
 }
+
 /* =========================================================
-   PRE-BLURRED VIDEO: NO LIVE BLUR NEEDED
+   RESULT CARD - SUCCESS DESIGN
 ========================================================= */
 
-.video-overlay {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+.result-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
 }
 
-.card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+.result-check {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #07100b;
+    background: linear-gradient(135deg, #8debb2, #d7ffe5);
+    box-shadow: 0 0 24px rgba(150, 255, 190, 0.28);
+}
+
+.result-check svg {
+    width: 22px;
+    height: 22px;
+}
+
+.result-check path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: checkDraw 500ms ease 200ms forwards;
+}
+
+@keyframes checkDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.result-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+}
+
+.result-count {
+    color: var(--accent);
+}
+
+.result-sub {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.result-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin-bottom: 16px;
+    padding: 11px 13px;
+    border-radius: 13px;
+    font-size: 12px;
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.result-file svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: var(--accent);
+}
+
+.result-file span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.result-note {
+    margin: -4px 0 14px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--success);
+}
+
+/* =========================================================
+   SUCCESS TEXT ANIMATION (only the success lines)
+========================================================= */
+
+.result-title,
+.result-sub,
+.result-file {
+    animation: successRise 550ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.result-title {
+    animation:
+        successRise 550ms cubic-bezier(.22, 1, .36, 1) 250ms both,
+        successShine 1700ms ease 650ms 1 both;
     background:
         linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.085),
-            rgba(255, 255, 255, 0.04)
+            100deg,
+            #ffffff 0%,
+            #ffffff 40%,
+            #c9ffe0 50%,
+            #ffffff 60%,
+            #ffffff 100%
         );
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.background-video {
-    transform: translateZ(0);
-    will-change: transform;
+.result-title .result-count {
+    -webkit-text-fill-color: var(--accent);
 }
 
-html {
-    scroll-behavior: auto;
+.result-sub {
+    animation-delay: 420ms;
+}
+
+.result-file {
+    animation-delay: 580ms;
+}
+
+@keyframes successRise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes successShine {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: 0% 0;
+    }
 }
