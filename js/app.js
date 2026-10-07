@@ -1,120 +1,75 @@
 /* =========================================================
-SHITSUB - Main Application
+   SHITSUB - Main Application
 ========================================================= */
 
 // =========================================================
 // DOM ELEMENTS
 // =========================================================
 
-const apiKeyInput =
-document.getElementById(“apiKey”);
+const apiKeyInput = document.getElementById("apiKey");
+const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
+const editApiKeyBtn = document.getElementById("editApiKeyBtn");
+const apiKeyStatus = document.getElementById("apiKeyStatus");
 
-const saveApiKeyBtn =
-document.getElementById(“saveApiKeyBtn”);
+const srtFile = document.getElementById("srtFile");
+const fileName = document.getElementById("fileName");
 
-const editApiKeyBtn =
-document.getElementById(“editApiKeyBtn”);
+const editPromptBtn = document.getElementById("editPromptBtn");
+const savePromptBtn = document.getElementById("savePromptBtn");
+const promptEditor = document.getElementById("promptEditor");
+const customPrompt = document.getElementById("customPrompt");
 
-const apiKeyStatus =
-document.getElementById(“apiKeyStatus”);
+const translateBtn = document.getElementById("translateBtn");
+const mainError = document.getElementById("mainError");
 
-const srtFile =
-document.getElementById(“srtFile”);
+const statusCard = document.getElementById("statusCard");
+const statusText = document.getElementById("statusText");
+const progressBar = document.getElementById("progressBar");
+const progressPercent = document.getElementById("progressPercent");
+const activityText = document.getElementById("activityText");
 
-const fileName =
-document.getElementById(“fileName”);
-
-const editPromptBtn =
-document.getElementById(“editPromptBtn”);
-
-const savePromptBtn =
-document.getElementById(“savePromptBtn”);
-
-const promptEditor =
-document.getElementById(“promptEditor”);
-
-const customPrompt =
-document.getElementById(“customPrompt”);
-
-const translateBtn =
-document.getElementById(“translateBtn”);
-
-const mainError =
-document.getElementById(“mainError”);
-
-const statusCard =
-document.getElementById(“statusCard”);
-
-const statusText =
-document.getElementById(“statusText”);
-
-const progressBar =
-document.getElementById(“progressBar”);
-
-const progressPercent =
-document.getElementById(“progressPercent”);
-
-const activityText =
-document.getElementById(“activityText”);
-
-const resultCard =
-document.getElementById(“resultCard”);
-
-const resultInfo =
-document.getElementById(“resultInfo”);
-
-const downloadBtn =
-document.getElementById(“downloadBtn”);
+const resultCard = document.getElementById("resultCard");
+const resultInfo = document.getElementById("resultInfo");
+const downloadBtn = document.getElementById("downloadBtn");
 
 // =========================================================
 // STATE
 // =========================================================
 
-let outputText = “”;
-
-let outputName = “”;
+let outputText = "";
+let outputName = "";
 
 // =========================================================
 // INITIALIZATION
 // =========================================================
 
 function init() {
+    loadSavedSettings();
+    setupEventListeners();
 
-loadSavedSettings();
-setupEventListeners();
+    if (apiKeyInput && !apiKeyInput.disabled) {
+        apiKeyInput.focus();
+    }
 
-if (
-apiKeyInput &&
-!apiKeyInput.disabled
-) {
-apiKeyInput.focus();
-}
+    if (promptEditor) {
+        promptEditor.style.display = "none";
+    }
 
-if (promptEditor) {
-promptEditor.style.display =
-“none”;
-}
+    if (statusCard) {
+        statusCard.style.display = "none";
+    }
 
-if (statusCard) {
-statusCard.style.display =
-“none”;
-}
+    if (resultCard) {
+        resultCard.style.display = "none";
+    }
 
-if (resultCard) {
-resultCard.style.display =
-“none”;
-}
+    if (progressBar) {
+        progressBar.style.width = "0%";
+    }
 
-if (progressBar) {
-progressBar.style.width =
-“0%”;
-}
-
-if (progressPercent) {
-progressPercent.textContent =
-“0%”;
-}
-
+    if (progressPercent) {
+        progressPercent.textContent = "0%";
+    }
 }
 
 // =========================================================
@@ -122,17 +77,13 @@ progressPercent.textContent =
 // =========================================================
 
 function loadSavedSettings() {
+    loadSavedApiKey();
 
-loadSavedApiKey();
+    const savedPrompt = localStorage.getItem(
+        CONFIG.STORAGE_KEYS.CUSTOM_PROMPT
+    );
 
-const savedPrompt =
-localStorage.getItem(
-CONFIG.STORAGE_KEYS.CUSTOM_PROMPT
-);
-
-customPrompt.value =
-savedPrompt || DEFAULT_PROMPT;
-
+    customPrompt.value = savedPrompt || DEFAULT_PROMPT;
 }
 
 // =========================================================
@@ -140,40 +91,23 @@ savedPrompt || DEFAULT_PROMPT;
 // =========================================================
 
 function loadSavedApiKey() {
+    const savedApiKey = localStorage.getItem(
+        CONFIG.STORAGE_KEYS.API_KEY
+    );
 
-const savedApiKey =
-localStorage.getItem(
-CONFIG.STORAGE_KEYS.API_KEY
-);
-
-if (savedApiKey) {
-
-apiKeyInput.value =
-    savedApiKey;
-apiKeyInput.disabled =
-    true;
-saveApiKeyBtn.style.display =
-    "none";
-editApiKeyBtn.style.display =
-    "block";
-apiKeyStatus.textContent =
-    "API key saved on this device.";
-
-}
-
-else {
-
-apiKeyInput.disabled =
-    false;
-saveApiKeyBtn.style.display =
-    "block";
-editApiKeyBtn.style.display =
-    "none";
-apiKeyStatus.textContent =
-    "";
-
-}
-
+    if (savedApiKey) {
+        apiKeyInput.value = savedApiKey;
+        apiKeyInput.disabled = true;
+        saveApiKeyBtn.style.display = "none";
+        editApiKeyBtn.style.display = "block";
+        apiKeyStatus.textContent = "API key saved on this device.";
+    }
+    else {
+        apiKeyInput.disabled = false;
+        saveApiKeyBtn.style.display = "block";
+        editApiKeyBtn.style.display = "none";
+        apiKeyStatus.textContent = "";
+    }
 }
 
 // =========================================================
@@ -181,36 +115,23 @@ apiKeyStatus.textContent =
 // =========================================================
 
 function handleSaveApiKey() {
+    const apiKey = apiKeyInput.value.trim();
 
-const apiKey =
-apiKeyInput.value.trim();
+    if (!apiKey) {
+        apiKeyStatus.textContent = "Please enter your Gemini API key.";
+        apiKeyInput.focus();
+        return;
+    }
 
-if (!apiKey) {
+    localStorage.setItem(
+        CONFIG.STORAGE_KEYS.API_KEY,
+        apiKey
+    );
 
-apiKeyStatus.textContent =
-    "Please enter your Gemini API key.";
-apiKeyInput.focus();
-return;
-
-}
-
-localStorage.setItem(
-CONFIG.STORAGE_KEYS.API_KEY,
-apiKey
-);
-
-apiKeyInput.disabled =
-true;
-
-saveApiKeyBtn.style.display =
-“none”;
-
-editApiKeyBtn.style.display =
-“block”;
-
-apiKeyStatus.textContent =
-“API key saved on this device.”;
-
+    apiKeyInput.disabled = true;
+    saveApiKeyBtn.style.display = "none";
+    editApiKeyBtn.style.display = "block";
+    apiKeyStatus.textContent = "API key saved on this device.";
 }
 
 // =========================================================
@@ -218,21 +139,11 @@ apiKeyStatus.textContent =
 // =========================================================
 
 function handleEditApiKey() {
-
-apiKeyInput.disabled =
-false;
-
-apiKeyInput.focus();
-
-saveApiKeyBtn.style.display =
-“block”;
-
-editApiKeyBtn.style.display =
-“none”;
-
-apiKeyStatus.textContent =
-“Edit your API key and save it again.”;
-
+    apiKeyInput.disabled = false;
+    apiKeyInput.focus();
+    saveApiKeyBtn.style.display = "block";
+    editApiKeyBtn.style.display = "none";
+    apiKeyStatus.textContent = "Edit your API key and save it again.";
 }
 
 // =========================================================
@@ -240,47 +151,14 @@ apiKeyStatus.textContent =
 // =========================================================
 
 function setupEventListeners() {
-
-saveApiKeyBtn.addEventListener(
-“click”,
-handleSaveApiKey
-);
-
-editApiKeyBtn.addEventListener(
-“click”,
-handleEditApiKey
-);
-
-srtFile.addEventListener(
-“change”,
-handleFileSelection
-);
-
-editPromptBtn.addEventListener(
-“click”,
-handleEditPrompt
-);
-
-savePromptBtn.addEventListener(
-“click”,
-handleSavePrompt
-);
-
-translateBtn.addEventListener(
-“click”,
-handleTranslate
-);
-
-downloadBtn.addEventListener(
-“click”,
-handleDownload
-);
-
-document.addEventListener(
-“keydown”,
-handleKeyboardNavigation
-);
-
+    saveApiKeyBtn.addEventListener("click", handleSaveApiKey);
+    editApiKeyBtn.addEventListener("click", handleEditApiKey);
+    srtFile.addEventListener("change", handleFileSelection);
+    editPromptBtn.addEventListener("click", handleEditPrompt);
+    savePromptBtn.addEventListener("click", handleSavePrompt);
+    translateBtn.addEventListener("click", handleTranslate);
+    downloadBtn.addEventListener("click", handleDownload);
+    document.addEventListener("keydown", handleKeyboardNavigation);
 }
 
 // =========================================================
@@ -288,28 +166,14 @@ handleKeyboardNavigation
 // =========================================================
 
 function handleFileSelection() {
-
-if (
-srtFile.files &&
-srtFile.files.length > 0
-) {
-
-fileName.textContent =
-    srtFile.files[0].name;
-fileName.style.color =
-    "var(--success)";
-
-}
-
-else {
-
-fileName.textContent =
-    "No file selected.";
-fileName.style.color =
-    "var(--muted)";
-
-}
-
+    if (srtFile.files && srtFile.files.length > 0) {
+        fileName.textContent = srtFile.files[0].name;
+        fileName.style.color = "var(--success)";
+    }
+    else {
+        fileName.textContent = "No file selected.";
+        fileName.style.color = "var(--muted)";
+    }
 }
 
 // =========================================================
@@ -317,96 +181,69 @@ fileName.style.color =
 // =========================================================
 
 function handleEditPrompt() {
-
-promptEditor.style.display =
-“block”;
-
-editPromptBtn.style.display =
-“none”;
-
-customPrompt.focus();
-
+    promptEditor.style.display = "block";
+    editPromptBtn.style.display = "none";
+    customPrompt.focus();
 }
 
 function handleSavePrompt() {
+    const prompt = customPrompt.value.trim();
 
-const prompt =
-customPrompt.value.trim();
+    if (!prompt) {
+        customPrompt.value = DEFAULT_PROMPT;
+    }
 
-if (!prompt) {
+    localStorage.setItem(
+        CONFIG.STORAGE_KEYS.CUSTOM_PROMPT,
+        customPrompt.value
+    );
 
-customPrompt.value =
-    DEFAULT_PROMPT;
-
-}
-
-localStorage.setItem(
-CONFIG.STORAGE_KEYS.CUSTOM_PROMPT,
-customPrompt.value
-);
-
-promptEditor.style.display =
-“none”;
-
-editPromptBtn.style.display =
-“block”;
-
+    promptEditor.style.display = "none";
+    editPromptBtn.style.display = "block";
 }
 
 // =========================================================
 // FRIENDLY PROGRESS MESSAGES
 // =========================================================
 
-function getFriendlyProgressMessage(
-percent,
-total,
-message
-) {
+function getFriendlyProgressMessage(percent, total, message) {
+    if (percent < 10) {
+        return "Getting your subtitles ready...";
+    }
 
-if (percent < 10) {
-return “Getting your subtitles ready…”;
+    if (percent < 20) {
+        return "Preparing translation...";
+    }
+
+    if (percent < 95) {
+        return "Translating your subtitles...";
+    }
+
+    if (percent < 100) {
+        return "Almost finished...";
+    }
+
+    return "Translation complete!";
 }
 
-if (percent < 20) {
-return “Preparing translation…”;
-}
+function getActivityMessage(percent, total, message) {
+    if (percent < 10) {
+        return "Reading subtitles...";
+    }
 
-if (percent < 95) {
-return “Translating your subtitles…”;
-}
+    if (percent < 20) {
+        return "Preparing translation...";
+    }
 
-if (percent < 100) {
-return “Almost finished…”;
-}
+    if (percent < 95) {
+        return "Gemini is translating...";
+    }
 
-return “Translation complete!”;
+    if (percent < 100) {
+        return "Finishing your subtitles...";
+    }
 
-}
-
-function getActivityMessage(
-percent,
-total,
-message
-) {
-
-if (percent < 10) {
-return “Reading subtitles…”;
-}
-
-if (percent < 20) {
-return “Preparing translation…”;
-}
-
-if (percent < 95) {
-return “Gemini is translating…”;
-}
-
-if (percent < 100) {
-return “Finishing your subtitles…”;
-}
-
-return “Ready to download”;
-
+    return "Ready to download";
 }
 
 // =========================================================
@@ -414,222 +251,163 @@ return “Ready to download”;
 // =========================================================
 
 async function handleTranslate() {
+    if (Translator.isTranslating) {
+        return;
+    }
 
-if (Translator.isTranslating) {
-return;
-}
+    mainError.textContent = "";
+    resultCard.style.display = "none";
 
-mainError.textContent =
-“”;
+    const apiKey = apiKeyInput.value.trim();
 
-resultCard.style.display =
-“none”;
+    if (!apiKey) {
+        showError("Please enter your Gemini API key.");
+        apiKeyInput.focus();
+        return;
+    }
 
-const apiKey =
-apiKeyInput.value.trim();
+    if (!srtFile.files || srtFile.files.length === 0) {
+        showError("Please select an English SRT file.");
+        srtFile.focus();
+        return;
+    }
 
-if (!apiKey) {
+    const prompt = customPrompt.value.trim();
 
-showError(
-    "Please enter your Gemini API key."
-);
-apiKeyInput.focus();
-return;
+    if (!prompt) {
+        customPrompt.value = DEFAULT_PROMPT;
 
-}
+        localStorage.setItem(
+            CONFIG.STORAGE_KEYS.CUSTOM_PROMPT,
+            DEFAULT_PROMPT
+        );
+    }
 
-if (
-!srtFile.files ||
-srtFile.files.length === 0
-) {
+    // Disable button while translating
+    translateBtn.disabled = true;
+    translateBtn.textContent = "Translating...";
 
-showError(
-    "Please select an English SRT file."
-);
-srtFile.focus();
-return;
+    // Reset progress
+    if (progressBar) {
+        progressBar.style.width = "0%";
+    }
 
-}
+    if (progressPercent) {
+        progressPercent.textContent = "0%";
+    }
 
-const prompt =
-customPrompt.value.trim();
+    if (statusText) {
+        statusText.textContent = "Getting your subtitles ready...";
+    }
 
-if (!prompt) {
+    if (activityText) {
+        activityText.textContent = "Reading subtitles...";
+    }
 
-customPrompt.value =
-    DEFAULT_PROMPT;
-localStorage.setItem(
-    CONFIG.STORAGE_KEYS.CUSTOM_PROMPT,
-    DEFAULT_PROMPT
-);
+    statusCard.style.display = "block";
 
-}
+    try {
+        const file = srtFile.files[0];
 
-// Disable button while translating
-
-translateBtn.disabled =
-true;
-
-translateBtn.textContent =
-“Translating…”;
-
-// Reset progress
-
-if (progressBar) {
-
-progressBar.style.width =
-    "0%";
-
-}
-
-if (progressPercent) {
-
-progressPercent.textContent =
-    "0%";
-
-}
-
-if (statusText) {
-
-statusText.textContent =
-    "Getting your subtitles ready...";
-
-}
-
-if (activityText) {
-
-activityText.textContent =
-    "Reading subtitles...";
-
-}
-
-statusCard.style.display =
-“block”;
-
-try {
-
-const file =
-    srtFile.files[0];
-const result =
-    await Translator.translateFile(
-        file,
-        apiKey,
-        customPrompt.value,
-        (
-            percent,
-            total,
-            message
-        ) => {
-            const safePercent =
-                Math.max(
+        const result = await Translator.translateFile(
+            file,
+            apiKey,
+            customPrompt.value,
+            (percent, total, message) => {
+                const safePercent = Math.max(
                     0,
                     Math.min(
                         100,
                         Number(percent) || 0
                     )
                 );
-            progressBar.style.width =
-                `${safePercent}%`;
-            if (progressPercent) {
-                progressPercent.textContent =
-                    `${safePercent}%`;
-            }
-            if (statusText) {
-                statusText.textContent =
-                    getFriendlyProgressMessage(
+
+                progressBar.style.width = `${safePercent}%`;
+
+                if (progressPercent) {
+                    progressPercent.textContent = `${safePercent}%`;
+                }
+
+                if (statusText) {
+                    statusText.textContent = getFriendlyProgressMessage(
                         safePercent,
                         total,
                         message
                     );
-            }
-            if (activityText) {
-                activityText.textContent =
-                    getActivityMessage(
+                }
+
+                if (activityText) {
+                    activityText.textContent = getActivityMessage(
                         safePercent,
                         total,
                         message
                     );
+                }
             }
+        );
+
+        // Store output
+        outputText = result.outputText;
+        outputName = result.outputName;
+
+        // Complete progress
+        if (progressBar) {
+            progressBar.style.width = "100%";
         }
-    );
-// Store output
-outputText =
-    result.outputText;
-outputName =
-    result.outputName;
-// Complete progress
-if (progressBar) {
-    progressBar.style.width =
-        "100%";
-}
-if (progressPercent) {
-    progressPercent.textContent =
-        "100%";
-}
-if (statusText) {
-    statusText.textContent =
-        "Translation complete!";
-}
-if (activityText) {
-    activityText.textContent =
-        "Ready to download";
-}
-// Success information
-resultInfo.innerHTML = `
-    <div class="success">
-        ✅ ${result.totalSubtitles}
-        subtitles translated successfully!
-    </div>
-    <div
-        style="
-            margin-top:8px;
-            color:var(--text);
-        "
-    >
-        File:
-        <strong>
-            ${escapeHTML(outputName)}
-        </strong>
-    </div>
-`;
-resultCard.style.display =
-    "block";
-setTimeout(() => {
-    resultCard.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-    });
-}, 200);
 
-}
+        if (progressPercent) {
+            progressPercent.textContent = "100%";
+        }
 
-catch (error) {
+        if (statusText) {
+            statusText.textContent = "Translation complete!";
+        }
 
-console.error(error);
-showError(
-    error?.message ||
-    "Translation failed. Please try again."
-);
-if (statusText) {
-    statusText.textContent =
-        "Translation failed.";
-}
-if (activityText) {
-    activityText.textContent =
-        "Something went wrong.";
-}
+        if (activityText) {
+            activityText.textContent = "Ready to download";
+        }
 
-}
+        // Success information
+        resultInfo.innerHTML = `
+            <div class="success">
+                ✅ ${result.totalSubtitles}
+                subtitles translated successfully!
+            </div>
+            <div style="margin-top:8px; color:var(--text);">
+                File:
+                <strong>${escapeHTML(outputName)}</strong>
+            </div>
+        `;
 
-finally {
+        resultCard.style.display = "block";
 
-translateBtn.disabled =
-    false;
-translateBtn.textContent =
-    "Translate SRT";
+        setTimeout(() => {
+            resultCard.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+        }, 200);
+    }
+    catch (error) {
+        console.error(error);
 
-}
+        showError(
+            error?.message ||
+            "Translation failed. Please try again."
+        );
 
+        if (statusText) {
+            statusText.textContent = "Translation failed.";
+        }
+
+        if (activityText) {
+            activityText.textContent = "Something went wrong.";
+        }
+    }
+    finally {
+        translateBtn.disabled = false;
+        translateBtn.textContent = "Translate SRT";
+    }
 }
 
 // =========================================================
@@ -637,126 +415,85 @@ translateBtn.textContent =
 // =========================================================
 
 function handleDownload() {
-
-if (!outputText) {
-return;
-}
-
-// UTF-8 BOM for Malayalam
-
-const textWithBom =
-“﻿” + outputText;
-
-// Android WebView download handler
-
-if (
-typeof AndroidDownload !== “undefined” &&
-typeof AndroidDownload.saveSrt === “function”
-) {
-
-try {
-    const encoder =
-        new TextEncoder();
-    const bytes =
-        encoder.encode(
-            textWithBom
-        );
-    let binary = "";
-    const chunkSize =
-        0x8000;
-    for (
-        let i = 0;
-        i < bytes.length;
-        i += chunkSize
-    ) {
-        const chunk =
-            bytes.subarray(
-                i,
-                Math.min(
-                    i + chunkSize,
-                    bytes.length
-                )
-            );
-        binary +=
-            String.fromCharCode(
-                ...chunk
-            );
+    if (!outputText) {
+        return;
     }
-    const base64 =
-        btoa(binary);
-    AndroidDownload.saveSrt(
-        base64,
-        outputName
-    );
-    resultInfo.innerHTML += `
-        <div
-            class="success"
-            style="margin-top:12px;"
-        >
-            ✅ Downloaded to:
-            ${escapeHTML(outputName)}
-        </div>
-    `;
-    return;
-}
-catch (error) {
-    console.error(
-        "Android download failed:",
-        error
-    );
-}
 
-}
+    // UTF-8 BOM for Malayalam
+    const textWithBom = "\uFEFF" + outputText;
 
-// Standard browser download
+    // Android WebView download handler
+    if (
+        typeof AndroidDownload !== "undefined" &&
+        typeof AndroidDownload.saveSrt === "function"
+    ) {
+        try {
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(textWithBom);
 
-try {
+            let binary = "";
+            const chunkSize = 0x8000;
 
-const blob =
-    new Blob(
-        [textWithBom],
-        {
-            type:
-                "application/x-subrip;charset=utf-8"
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const chunk = bytes.subarray(
+                    i,
+                    Math.min(i + chunkSize, bytes.length)
+                );
+
+                binary += String.fromCharCode(...chunk);
+            }
+
+            const base64 = btoa(binary);
+
+            AndroidDownload.saveSrt(base64, outputName);
+
+            resultInfo.innerHTML += `
+                <div class="success" style="margin-top:12px;">
+                    ✅ Downloaded to:
+                    ${escapeHTML(outputName)}
+                </div>
+            `;
+
+            return;
         }
-    );
-const url =
-    URL.createObjectURL(blob);
-const a =
-    document.createElement("a");
-a.href =
-    url;
-a.download =
-    outputName;
-a.style.display =
-    "none";
-document.body.appendChild(a);
-a.click();
-a.remove();
-setTimeout(() => {
-    URL.revokeObjectURL(url);
-}, 1000);
-resultInfo.innerHTML += `
-    <div
-        class="success"
-        style="margin-top:12px;"
-    >
-        ✅ Downloaded to:
-        ${escapeHTML(outputName)}
-    </div>
-`;
+        catch (error) {
+            console.error("Android download failed:", error);
+        }
+    }
 
-}
+    // Standard browser download
+    try {
+        const blob = new Blob(
+            [textWithBom],
+            { type: "application/x-subrip;charset=utf-8" }
+        );
 
-catch (error) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
 
-console.error(error);
-showError(
-    "Could not download the SRT file."
-);
+        a.href = url;
+        a.download = outputName;
+        a.style.display = "none";
 
-}
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
 
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+        resultInfo.innerHTML += `
+            <div class="success" style="margin-top:12px;">
+                ✅ Downloaded to:
+                ${escapeHTML(outputName)}
+            </div>
+        `;
+    }
+    catch (error) {
+        console.error(error);
+        showError("Could not download the SRT file.");
+    }
 }
 
 // =========================================================
@@ -764,45 +501,23 @@ showError(
 // =========================================================
 
 function handleKeyboardNavigation(e) {
+    // Escape / Android Back
+    if (e.key === "Escape" || e.key === "Back") {
+        if (promptEditor.style.display === "block") {
+            promptEditor.style.display = "none";
+            editPromptBtn.style.display = "block";
+            editPromptBtn.focus();
+            e.preventDefault();
+        }
+    }
 
-// Escape / Android Back
-
-if (
-e.key === “Escape” ||
-e.key === “Back”
-) {
-
-if (
-    promptEditor.style.display ===
-    "block"
-) {
-    promptEditor.style.display =
-        "none";
-    editPromptBtn.style.display =
-        "block";
-    editPromptBtn.focus();
-    e.preventDefault();
-}
-
-}
-
-// Enter key
-
-if (
-e.key === “Enter” &&
-e.target.tagName !== “TEXTAREA”
-) {
-
-if (
-    document.activeElement ===
-    apiKeyInput
-) {
-    srtFile.focus();
-    e.preventDefault();
-}
-
-}
-
+    // Enter key
+    if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+        if (document.activeElement === apiKeyInput) {
+            srtFile.focus();
+            e.preventDefault();
+        }
+    }
 }
 
 // =========================================================
@@ -810,57 +525,25 @@ if (
 // =========================================================
 
 function showError(message) {
-
-mainError.textContent =
-message;
-
+    mainError.textContent = message;
 }
 
 function escapeHTML(value) {
-
-return String(value)
-
-.replace(
-    /&/g,
-    "&amp;"
-)
-.replace(
-    /</g,
-    "&lt;"
-)
-.replace(
-    />/g,
-    "&gt;"
-)
-.replace(
-    /"/g,
-    "&quot;"
-)
-.replace(
-    /'/g,
-    "&#039;"
-);
-
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // =========================================================
 // START APPLICATION
 // =========================================================
 
-if (
-document.readyState ===
-“loading”
-) {
-
-document.addEventListener(
-“DOMContentLoaded”,
-init
-);
-
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
 }
-
 else {
-
-init();
-
+    init();
 }
