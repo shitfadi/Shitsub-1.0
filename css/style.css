@@ -657,3 +657,31 @@ button:focus-visible {
         scroll-behavior: auto !important;
     }
 }
+/* =========================================================
+   PRE-BLURRED VIDEO: NO LIVE BLUR NEEDED
+========================================================= */
+
+.video-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.085),
+            rgba(255, 255, 255, 0.04)
+        );
+}
+
+.background-video {
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+html {
+    scroll-behavior: auto;
+}
