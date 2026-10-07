@@ -908,431 +908,7 @@ button:focus-visible {
 
 }
 /* =========================================================
-   TRANSLATE BUTTON
-   ========================================================= */
-
-.translate-button-wrap {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-}
-
-.translate-fx-btn {
-    --btn-width: 260px;
-    --btn-height: 68px;
-
-    position: relative;
-
-    width: var(--btn-width);
-    height: var(--btn-height);
-
-    overflow: hidden;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    gap: 16px;
-
-    border-radius: 18px;
-
-    border: 1px solid rgba(255, 255, 255, 0.18);
-
-    color: #07100b;
-
-    background:
-        linear-gradient(
-            135deg,
-            #d9ffe8,
-            #9ce8bd
-        );
-
-    box-shadow:
-        0 14px 35px rgba(90, 255, 160, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.75);
-
-    font-family: inherit;
-
-    cursor: pointer;
-
-    isolation: isolate;
-
-    transition:
-        transform 220ms ease,
-        box-shadow 220ms ease;
-}
-
-
-/* Expanding glass circle */
-
-.translate-circle {
-    position: absolute;
-
-    width: 20px;
-    height: 20px;
-
-    right: 22px;
-
-    border-radius: 50%;
-
-    background:
-        rgba(255, 255, 255, 0.30);
-
-    z-index: -1;
-
-    transition:
-        transform 500ms cubic-bezier(.16, 1, .3, 1),
-        width 500ms cubic-bezier(.16, 1, .3, 1),
-        height 500ms cubic-bezier(.16, 1, .3, 1);
-}
-
-
-/* Text */
-
-.translate-text {
-    position: relative;
-    z-index: 2;
-
-    font-size: 15px;
-    font-weight: 800;
-
-    letter-spacing: -0.01em;
-
-    transition:
-        transform 300ms ease;
-}
-
-
-/* Arrow */
-
-.translate-btn-icon {
-    position: relative;
-
-    width: 21px;
-    height: 21px;
-
-    z-index: 2;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    transition:
-        transform 300ms ease;
-}
-
-.translate-btn-icon svg {
-    width: 100%;
-    height: 100%;
-
-    fill: currentColor;
-}
-
-
-/* Hover */
-
-.translate-fx-btn:hover {
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 18px 45px rgba(90, 255, 160, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.85);
-}
-
-.translate-fx-btn:hover .translate-circle {
-    width: 340px;
-    height: 340px;
-
-    transform: translate(100px, 0);
-}
-
-.translate-fx-btn:hover .translate-btn-icon {
-    transform: translateX(4px);
-}
-
-
-/* Press */
-
-.translate-fx-btn:active {
-    transform: scale(0.97);
-}
-
-
-/* Keyboard / Android TV */
-
-.translate-fx-btn:focus-visible {
-    outline: none;
-
-    box-shadow:
-        0 0 0 3px rgba(185, 255, 216, 0.18),
-        0 0 35px rgba(120, 255, 175, 0.25);
-}
-
-
-/* Disabled while translating */
-
-.translate-fx-btn:disabled {
-    opacity: 0.6;
-
-    cursor: not-allowed;
-
-    transform: none;
-}
-
-.translate-fx-btn:disabled .translate-circle {
-    animation: translateWaiting 1.5s ease-in-out infinite;
-}
-
-@keyframes translateWaiting {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(8);
-    }
-
-}
-
-
-/* Mobile */
-
-@media (max-width: 600px) {
-
-    .translate-fx-btn {
-        width: 100%;
-        max-width: 340px;
-        height: 60px;
-    }
-
-}
-/* =========================================================
-   DOWNLOAD BUTTON
-   ========================================================= */
-
-.download-button-wrap {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-}
-
-.download-fx-btn {
-    --btn-width: 280px;
-    --btn-height: 62px;
-
-    position: relative;
-    width: var(--btn-width);
-    height: var(--btn-height);
-
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-
-    color: #07100b;
-    background: linear-gradient(
-        135deg,
-        #d9ffe8,
-        #9ce8bd
-    );
-
-    box-shadow:
-        0 14px 35px rgba(90, 255, 160, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.75);
-
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 800;
-
-    cursor: pointer;
-    isolation: isolate;
-
-    transition:
-        transform 220ms ease,
-        box-shadow 220ms ease;
-}
-
-.download-text {
-    position: relative;
-    z-index: 2;
-}
-
-.download-btn-icon {
-    position: relative;
-    z-index: 2;
-
-    width: 21px;
-    height: 21px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    transition: transform 300ms ease;
-}
-
-.download-btn-icon svg {
-    width: 100%;
-    height: 100%;
-}
-
-.download-fx-btn::before {
-    content: "";
-
-    position: absolute;
-    width: 20px;
-    height: 20px;
-
-    right: 22px;
-
-    border-radius: 50%;
-
-    background: rgba(255, 255, 255, 0.30);
-
-    z-index: 0;
-
-    transition:
-        width 500ms cubic-bezier(.16, 1, .3, 1),
-        height 500ms cubic-bezier(.16, 1, .3, 1),
-        transform 500ms cubic-bezier(.16, 1, .3, 1);
-}
-
-.download-fx-btn:hover {
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 18px 45px rgba(90, 255, 160, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.85);
-}
-
-.download-fx-btn:hover::before {
-    width: 340px;
-    height: 340px;
-    transform: translate(100px, 0);
-}
-
-.download-fx-btn:hover .download-btn-icon {
-    transform: translateY(3px);
-}
-
-.download-fx-btn:active {
-    transform: scale(0.97);
-}
-
-.download-fx-btn:focus-visible {
-    outline: none;
-
-    box-shadow:
-        0 0 0 3px rgba(185, 255, 216, 0.18),
-        0 0 35px rgba(120, 255, 175, 0.25);
-}
-
-.download-fx-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-@media (max-width: 600px) {
-    .download-fx-btn {
-        width: 100%;
-        max-width: 340px;
-        height: 60px;
-    }
-}
-/* =========================================================
-   FINAL BUTTON OVERRIDES
-   ========================================================= */
-
-.translate-fx-btn,
-.download-fx-btn {
-    position: relative !important;
-    overflow: hidden !important;
-    isolation: isolate !important;
-
-    width: 100% !important;
-    max-width: 340px !important;
-    height: 64px !important;
-
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 14px !important;
-
-    border-radius: 18px !important;
-    border: 1px solid rgba(255, 255, 255, 0.18) !important;
-
-    color: #07100b !important;
-
-    background:
-        linear-gradient(
-            135deg,
-            #d9ffe8,
-            #9ce8bd
-        ) !important;
-
-    box-shadow:
-        0 14px 35px rgba(90, 255, 160, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.75) !important;
-
-    font-family: inherit !important;
-    font-size: 15px !important;
-    font-weight: 800 !important;
-
-    cursor: pointer !important;
-}
-
-/* Make sure button contents stay above the effect */
-
-.translate-text,
-.translate-btn-icon,
-.download-text,
-.download-btn-icon {
-    position: relative !important;
-    z-index: 3 !important;
-}
-
-/* Translate liquid circle */
-
-.translate-circle {
-    z-index: 1 !important;
-}
-
-/* Download liquid circle */
-
-.download-fx-btn::before {
-    z-index: 1 !important;
-}
-
-/* Hover */
-
-.translate-fx-btn:hover,
-.download-fx-btn:hover {
-    transform: translateY(-2px) !important;
-
-    box-shadow:
-        0 18px 45px rgba(90, 255, 160, 0.28),
-        inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
-}
-
-/* Mobile */
-
-@media (max-width: 600px) {
-    .translate-fx-btn,
-    .download-fx-btn {
-        width: 100% !important;
-        max-width: 340px !important;
-        height: 60px !important;
-    }
-}
-/* =========================================================
-   FINAL TRANSLATE + DOWNLOAD BUTTON OVERRIDE
+   TRANSLATE & DOWNLOAD BUTTONS (CLEANED)
    ========================================================= */
 
 .translate-button-wrap,
@@ -1345,228 +921,123 @@ button:focus-visible {
 
 .translate-fx-btn,
 .download-fx-btn {
-    position: relative !important;
-    overflow: hidden !important;
-    isolation: isolate !important;
-
-    width: 100% !important;
-    max-width: 340px !important;
-    height: 64px !important;
-    min-height: 64px !important;
-
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 14px !important;
-
-    padding: 0 24px !important;
-    margin: 0 !important;
-
-    border-radius: 18px !important;
-    border: 1px solid rgba(255, 255, 255, 0.20) !important;
-
-    color: #07100b !important;
-
-    background:
-        linear-gradient(
-            135deg,
-            #d9ffe8 0%,
-            #b8f5d0 45%,
-            #9ce8bd 100%
-        ) !important;
-
-    box-shadow:
-        0 14px 35px rgba(90, 255, 160, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.80) !important;
-
-    font-family: inherit !important;
-    font-size: 15px !important;
-    font-weight: 800 !important;
-
-    cursor: pointer !important;
-
-    transition:
-        transform 220ms ease,
-        box-shadow 220ms ease !important;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    width: 100%;
+    max-width: 340px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    color: #07100b;
+    background: linear-gradient(135deg, #d9ffe8 0%, #b8f5d0 45%, #9ce8bd 100%);
+    box-shadow: 0 14px 35px rgba(90, 255, 160, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.80);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
-
-/* TEXT */
-
+/* Text and Icons (Keep above the circle) */
 .translate-text,
-.download-text {
-    position: relative !important;
-    z-index: 5 !important;
-
-    color: #07100b !important;
-
-    font-size: 15px !important;
-    font-weight: 800 !important;
-
+.download-text,
+.translate-btn-icon,
+.download-btn-icon {
+    position: relative;
+    z-index: 5;
     pointer-events: none;
+    transition: transform 300ms ease;
 }
-
-
-/* ICON */
 
 .translate-btn-icon,
 .download-btn-icon {
-    position: relative !important;
-    z-index: 5 !important;
-
-    width: 21px !important;
-    height: 21px !important;
-
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    color: #07100b !important;
-
-    pointer-events: none;
-
-    transition:
-        transform 300ms ease !important;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .translate-btn-icon svg,
 .download-btn-icon svg {
-    width: 100% !important;
-    height: 100% !important;
-
-    display: block !important;
-
+    width: 100%;
+    height: 100%;
     fill: currentColor;
 }
 
-
-/* TRANSLATE CIRCLE */
-
-.translate-circle {
-    position: absolute !important;
-
-    width: 22px !important;
-    height: 22px !important;
-
-    right: 22px !important;
-    top: 50% !important;
-
-    transform: translateY(-50%) !important;
-
-    border-radius: 50% !important;
-
-    background: rgba(255, 255, 255, 0.32) !important;
-
-    z-index: 1 !important;
-
-    pointer-events: none;
-
-    transition:
-        width 500ms cubic-bezier(.16, 1, .3, 1),
-        height 500ms cubic-bezier(.16, 1, .3, 1),
-        transform 500ms cubic-bezier(.16, 1, .3, 1) !important;
-}
-
-
-/* DOWNLOAD CIRCLE */
-
+/* Expanding Glass Circle */
+.translate-circle,
 .download-fx-btn::before {
-    content: "" !important;
-
-    position: absolute !important;
-
-    width: 22px !important;
-    height: 22px !important;
-
-    right: 22px !important;
-    top: 50% !important;
-
-    transform: translateY(-50%) !important;
-
-    border-radius: 50% !important;
-
-    background: rgba(255, 255, 255, 0.32) !important;
-
-    z-index: 1 !important;
-
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    z-index: 1;
     pointer-events: none;
-
-    transition:
-        width 500ms cubic-bezier(.16, 1, .3, 1),
-        height 500ms cubic-bezier(.16, 1, .3, 1),
-        transform 500ms cubic-bezier(.16, 1, .3, 1) !important;
+    transition: width 500ms cubic-bezier(.16, 1, .3, 1),
+                height 500ms cubic-bezier(.16, 1, .3, 1),
+                transform 500ms cubic-bezier(.16, 1, .3, 1);
 }
 
-
-/* HOVER */
-
+/* Hover Effects */
 .translate-fx-btn:hover,
 .download-fx-btn:hover {
-    transform: translateY(-2px) !important;
-
-    box-shadow:
-        0 18px 45px rgba(90, 255, 160, 0.30),
-        inset 0 1px 0 rgba(255, 255, 255, 0.90) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 45px rgba(90, 255, 160, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.90);
 }
 
-
+/* Expand circle on hover */
 .translate-fx-btn:hover .translate-circle,
 .download-fx-btn:hover::before {
-    width: 340px !important;
-    height: 340px !important;
-
-    transform:
-        translate(100px, -50%) !important;
+    width: 380px;
+    height: 380px;
+    transform: translate(50px, -50%); 
 }
 
-
+/* Move icons on hover */
 .translate-fx-btn:hover .translate-btn-icon {
-    transform: translateX(4px) !important;
+    transform: translateX(4px);
 }
-
 
 .download-fx-btn:hover .download-btn-icon {
-    transform: translateY(3px) !important;
+    transform: translateY(3px);
 }
 
-
-/* CLICK */
-
+/* Click / Active State */
 .translate-fx-btn:active,
 .download-fx-btn:active {
-    transform: scale(0.97) !important;
+    transform: scale(0.97);
 }
 
-
-/* FOCUS */
-
+/* Focus for Accessibility */
 .translate-fx-btn:focus-visible,
 .download-fx-btn:focus-visible {
-    outline: 2px solid rgba(210, 255, 230, 0.85) !important;
-    outline-offset: 4px !important;
+    outline: 2px solid rgba(210, 255, 230, 0.85);
+    outline-offset: 4px;
 }
 
-
-/* DISABLED */
-
+/* Disabled State */
 .translate-fx-btn:disabled,
 .download-fx-btn:disabled {
-    opacity: 0.6 !important;
-    cursor: not-allowed !important;
-    transform: none !important;
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
-
-/* MOBILE */
-
+/* Mobile Sizing */
 @media (max-width: 600px) {
-
     .translate-fx-btn,
     .download-fx-btn {
-        width: 100% !important;
-        max-width: 340px !important;
-        height: 60px !important;
-        min-height: 60px !important;
+        height: 60px;
     }
-
 }
