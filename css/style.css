@@ -1,6 +1,65 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* =========================================================
+   CINEMATIC VIDEO BACKGROUND
+   ========================================================= */
+
+.background-video {
+    position: fixed;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    z-index: -3;
+    pointer-events: none;
+
+    background: #070b09;
+
+    transform: scale(1.02);
+}
+
+.video-overlay {
+    position: fixed;
+    inset: 0;
+
+    z-index: -2;
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(4, 8, 6, 0.48) 0%,
+            rgba(4, 8, 6, 0.30) 35%,
+            rgba(4, 8, 6, 0.62) 100%
+        );
+
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+}
+
+.app {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 600px) {
+
+    .video-overlay {
+        background:
+            linear-gradient(
+                180deg,
+                rgba(4, 8, 6, 0.55) 0%,
+                rgba(4, 8, 6, 0.35) 40%,
+                rgba(4, 8, 6, 0.72) 100%
+            );
+    }
+
+}
+
+/* =========================================================
    SHITSUB - PREMIUM LIQUID GLASS UI
    ========================================================= */
 
