@@ -368,14 +368,33 @@ async function handleTranslate() {
         }
 
         // Success information
+        const count = Number(result.totalSubtitles) || 0;
+        const label = count === 1 ? "subtitle" : "subtitles";
+
         resultInfo.innerHTML = `
-            <div class="success">
-                ✅ ${result.totalSubtitles}
-                subtitles translated successfully!
+            <div class="result-summary">
+                <div class="result-check">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="result-title">
+                        <span class="result-count">${count}</span> ${label} translated
+                    </div>
+                    <div class="result-sub">
+                        Your Malayalam SRT is ready to download
+                    </div>
+                </div>
             </div>
-            <div style="margin-top:8px; color:var(--text);">
-                File:
-                <strong>${escapeHTML(outputName)}</strong>
+            <div class="result-file">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 3v5h5"/>
+                </svg>
+                <span>${escapeHTML(outputName)}</span>
             </div>
         `;
 
@@ -447,12 +466,7 @@ function handleDownload() {
 
             AndroidDownload.saveSrt(base64, outputName);
 
-            resultInfo.innerHTML += `
-                <div class="success" style="margin-top:12px;">
-                    ✅ Downloaded to:
-                    ${escapeHTML(outputName)}
-                </div>
-            `;
+            showDownloadNote();
 
             return;
         }
@@ -483,12 +497,7 @@ function handleDownload() {
             URL.revokeObjectURL(url);
         }, 1000);
 
-        resultInfo.innerHTML += `
-            <div class="success" style="margin-top:12px;">
-                ✅ Downloaded to:
-                ${escapeHTML(outputName)}
-            </div>
-        `;
+        showDownloadNote();
     }
     catch (error) {
         console.error(error);
@@ -526,6 +535,19 @@ function handleKeyboardNavigation(e) {
 
 function showError(message) {
     mainError.textContent = message;
+}
+
+function showDownloadNote() {
+    const old = resultInfo.querySelector(".result-note");
+
+    if (old) {
+        old.remove();
+    }
+
+    resultInfo.insertAdjacentHTML(
+        "beforeend",
+        '<div class="result-note">Download started</div>'
+    );
 }
 
 function escapeHTML(value) {
