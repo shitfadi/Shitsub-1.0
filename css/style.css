@@ -124,10 +124,11 @@ APP
 
 .app {
 
-width: min(
-    760px,
-    calc(100% - 32px)
-);
+width:
+    min(
+        760px,
+        calc(100% - 32px)
+    );
 margin: 0 auto;
 padding:
     44px
@@ -413,15 +414,6 @@ transform:
 
 transform:
     scale(0.97);
-
-}
-
-/* Translate and Download use the SAME button style */
-
-.translate-btn,
-.download-btn {
-
-margin-top: 0;
 
 }
 
@@ -740,7 +732,7 @@ MOBILE
 .app {
     width:
         min(
-            100% - 20px,
+            calc(100% - 20px),
             760px
         );
     padding-top: 27px;
@@ -764,10 +756,6 @@ MOBILE
 }
 .secondary-btn,
 .save-btn {
-    width: 100%;
-}
-.translate-btn,
-.download-btn {
     width: 100%;
 }
 
