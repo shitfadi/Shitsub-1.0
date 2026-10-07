@@ -2,18 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+
 <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
->
+name=“viewport”
+content=“width=device-width, initial-scale=1, viewport-fit=cover”
+
 <meta
-    name="theme-color"
-    content="#0b0f0d"
->
+name=“theme-color”
+content=”#0b0f0d”
+
 <meta
-    name="description"
-    content="ShitSub - English SRT to Natural Kerala Malayalam"
->
+name=“description”
+content=“ShitSub - English SRT to Natural Kerala Malayalam”
+
 <link
     rel="manifest"
     href="manifest.json"
@@ -33,7 +34,7 @@
 <title>ShitSub - SRT Translator</title>
 <link
     rel="stylesheet"
-    href="css/style.css?v=12"
+    href="css/style.css?v=13"
 >
 </head>
 <body>
@@ -64,129 +65,129 @@ preload=“auto”
      HEADER
 ================================================== -->
 <header class="header">
-    <div class="brand">
-        <div class="logo">
-            ShitSub
-        </div>
-        <div class="tagline">
-            English SRT → Natural Kerala Malayalam
-        </div>
+<div class="brand">
+    <div class="logo">
+        ShitSub
     </div>
+    <div class="tagline">
+        English SRT → Natural Kerala Malayalam
+    </div>
+</div>
 </header>
 <!-- =================================================
      GEMINI API KEY
 ================================================== -->
 <section class="card api-card">
-    <div class="section-title">
-        Gemini API Key
-    </div>
-    <label for="apiKey">
-        API Key
-    </label>
-    <input
-        id="apiKey"
-        type="password"
-        placeholder="Enter your Gemini API key"
-        autocomplete="off"
-        spellcheck="false"
+<div class="section-title">
+    Gemini API Key
+</div>
+<label for="apiKey">
+    API Key
+</label>
+<input
+    id="apiKey"
+    type="password"
+    placeholder="Enter your Gemini API key"
+    autocomplete="off"
+    spellcheck="false"
+>
+<div class="api-actions">
+    <button
+        id="saveApiKeyBtn"
+        type="button"
+        class="secondary-btn"
     >
-    <div class="api-actions">
-        <button
-            id="saveApiKeyBtn"
-            type="button"
-            class="secondary-btn"
-        >
-            Save API Key
-        </button>
-        <button
-            id="editApiKeyBtn"
-            type="button"
-            class="secondary-btn"
-            style="display:none;"
-        >
-            Edit API Key
-        </button>
-    </div>
-    <div
-        id="apiKeyStatus"
-        class="prompt-info"
-    ></div>
+        Save API Key
+    </button>
+    <button
+        id="editApiKeyBtn"
+        type="button"
+        class="secondary-btn"
+        style="display:none;"
+    >
+        Edit API Key
+    </button>
+</div>
+<div
+    id="apiKeyStatus"
+    class="prompt-info"
+></div>
 </section>
 <!-- =================================================
      SRT FILE
 ================================================== -->
 <section class="card">
-    <div class="section-title">
-        Subtitle File
-    </div>
-    <label for="srtFile">
-        Select English SRT
-    </label>
-    <input
-        id="srtFile"
-        class="file-input"
-        type="file"
-        accept=".srt,text/plain,application/x-subrip"
-    >
-    <div
-        id="fileName"
-        class="prompt-info"
-    >
-        No file selected.
-    </div>
+<div class="section-title">
+    Subtitle File
+</div>
+<label for="srtFile">
+    Select English SRT
+</label>
+<input
+    id="srtFile"
+    class="file-input"
+    type="file"
+    accept=".srt,text/plain,application/x-subrip"
+>
+<div
+    id="fileName"
+    class="prompt-info"
+>
+    No file selected.
+</div>
 </section>
 <!-- =================================================
      CUSTOM PROMPT
 ================================================== -->
 <section class="card">
-    <div class="section-title">
-        Custom Prompt
-    </div>
+<div class="section-title">
+    Custom Prompt
+</div>
+<button
+    id="editPromptBtn"
+    type="button"
+    class="secondary-btn"
+>
+    Edit Prompt
+</button>
+<div
+    id="promptEditor"
+    class="prompt-editor"
+>
+    <label for="customPrompt">
+        Translation Prompt
+    </label>
+    <textarea
+        id="customPrompt"
+        placeholder="Enter your custom subtitle translation instructions..."
+    ></textarea>
     <button
-        id="editPromptBtn"
+        id="savePromptBtn"
         type="button"
-        class="secondary-btn"
+        class="save-btn"
     >
-        Edit Prompt
+        Save Prompt
     </button>
-    <div
-        id="promptEditor"
-        class="prompt-editor"
-    >
-        <label for="customPrompt">
-            Translation Prompt
-        </label>
-        <textarea
-            id="customPrompt"
-            placeholder="Enter your custom subtitle translation instructions..."
-        ></textarea>
-        <button
-            id="savePromptBtn"
-            type="button"
-            class="save-btn"
-        >
-            Save Prompt
-        </button>
-        <div class="prompt-info">
-            Your saved prompt will be remembered on this device.
-        </div>
+    <div class="prompt-info">
+        Your saved prompt will be remembered on this device.
     </div>
+</div>
 </section>
 <!-- =================================================
      TRANSLATE
 ================================================== -->
 <section class="card translate-card">
-    <button
-        id="translateBtn"
-        type="button"
-        class="secondary-btn translate-btn"
-    >
-        Translate SRT
-    </button>
-    <div
-        id="mainError"
-        class="error"
-    ></div>
+<button
+    id="translateBtn"
+    type="button"
+    class="secondary-btn"
+>
+    Translate SRT
+</button>
+<div
+    id="mainError"
+    class="error"
+></div>
 </section>
 <!-- =================================================
      TRANSLATION PROGRESS
@@ -195,35 +196,35 @@ preload=“auto”
     id="statusCard"
     class="card status-card"
 >
-    <div class="section-title">
-        Translation Progress
-    </div>
-    <div class="progress-header">
-        <div
-            id="statusText"
-            class="status-text"
-        >
-            Getting your subtitles ready...
-        </div>
-        <div
-            id="progressPercent"
-            class="progress-percent"
-        >
-            0%
-        </div>
-    </div>
-    <div class="progress-container">
-        <div
-            id="progressBar"
-            class="progress-bar"
-        ></div>
+<div class="section-title">
+    Translation Progress
+</div>
+<div class="progress-header">
+    <div
+        id="statusText"
+        class="status-text"
+    >
+        Getting your subtitles ready...
     </div>
     <div
-        id="activityText"
-        class="activity-text"
+        id="progressPercent"
+        class="progress-percent"
     >
-        Reading subtitles...
+        0%
     </div>
+</div>
+<div class="progress-container">
+    <div
+        id="progressBar"
+        class="progress-bar"
+    ></div>
+</div>
+<div
+    id="activityText"
+    class="activity-text"
+>
+    Reading subtitles...
+</div>
 </section>
 <!-- =================================================
      RESULT
@@ -232,28 +233,28 @@ preload=“auto”
     id="resultCard"
     class="card result-card"
 >
-    <div class="section-title">
-        Translation Complete
-    </div>
-    <div
-        id="resultInfo"
-        class="result-info"
-    ></div>
-    <button
-        id="downloadBtn"
-        type="button"
-        class="secondary-btn download-btn"
-    >
-        Download Malayalam SRT
-    </button>
+<div class="section-title">
+    Translation Complete
+</div>
+<div
+    id="resultInfo"
+    class="result-info"
+></div>
+<button
+    id="downloadBtn"
+    type="button"
+    class="secondary-btn"
+>
+    Download Malayalam SRT
+</button>
 </section>
 <!-- =================================================
      FOOTER
 ================================================== -->
 <footer class="footer">
-    ShitSub • English SRT → Colloquial Kerala Malayalam
-    <br>
-    Created by Fadi
+ShitSub • English SRT → Colloquial Kerala Malayalam
+<br>
+Created by Fadi
 </footer>
 </div>
 <!-- =====================================================
@@ -263,6 +264,6 @@ preload=“auto”
 <script src="js/srt-parser.js"></script>
 <script src="js/gemini-api.js?v=17"></script>
 <script src="js/translator.js"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>
