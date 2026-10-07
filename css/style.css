@@ -36,8 +36,8 @@
             rgba(4, 8, 6, 0.68) 100%
         );
 
-    backdrop-filter: blur(7px);
-    -webkit-backdrop-filter: blur(7px);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 .app {
     position: relative;
