@@ -35,7 +35,7 @@ STRICT RULES:
 - Do not skip subtitles.
 - Do not summarize.
 - Do not add explanations.
-- Return ONLY subtitle IDs and translations.
+- Return ONLY subtitle IDs, SRC lines and MAL translations.
 - Use natural colloquial Kerala Malayalam.
 - Preserve the character's personality, emotion, tone, slang and profanity.
 - Do not unnecessarily make casual dialogue formal.
@@ -53,15 +53,14 @@ IMPORTANT DUPLICATE RULE:
 - However, never copy a translation from another subtitle simply because the English subtitles look similar.
 - Each translation must be based on the English text belonging to its own ID.
 
-FORMAT:
+FORMAT (follow exactly for EVERY subtitle):
 [[SUBTITLE_1]]
-Malayalam translation
+SRC: first three words of that English subtitle, copied exactly
+MAL: Malayalam translation of that same subtitle
 
 [[SUBTITLE_2]]
-Malayalam translation
-
-[[SUBTITLE_3]]
-Malayalam translation
+SRC: first three words of that English subtitle, copied exactly
+MAL: Malayalam translation of that same subtitle
 
 SUBTITLES:
 ${input}`;
@@ -222,6 +221,9 @@ ${input}`;
         const translations =
             new Array(count);
 
+        const anchors =
+            new Array(count);
+
         const seen =
             new Set();
 
@@ -284,18 +286,49 @@ ${input}`;
                 const index =
                     currentNumber - 1;
 
+                // SRC: echo of the English words (used for alignment check)
+                const srcMatch =
+                    line.match(/^SRC\s*:\s*(.*)$/i);
+
+                if (srcMatch) {
+
+                    anchors[index] =
+                        srcMatch[1].trim();
+
+                    continue;
+                }
+
+                // MAL: Malayalam translation
+                let textLine = line;
+
+                const malMatch =
+                    line.match(/^MAL\s*:\s*(.*)$/i);
+
+                if (malMatch) {
+
+                    textLine =
+                        malMatch[1].trim();
+
+                    if (!textLine) {
+                        continue;
+                    }
+                }
+
                 if (!translations[index]) {
 
                     translations[index] =
-                        line;
+                        textLine;
 
                 } else {
 
                     translations[index] +=
-                        " " + line;
+                        " " + textLine;
                 }
             }
         }
+
+        translations.anchors =
+            anchors;
 
         return translations;
     },
@@ -342,6 +375,19 @@ validateTranslations(
             );
 
             continue;
+        }
+
+        if (
+            this.hasMisalignedAnchor(
+                english,
+                translations.anchors,
+                i
+            )
+        ) {
+
+            problems.push(
+                `shift:${i + 1}`
+            );
         }
 
         if (
@@ -697,6 +743,39 @@ validateTranslations(
     },
 
 
+    hasMisalignedAnchor(
+        english,
+        anchors,
+        index
+    ) {
+
+        if (
+            !anchors ||
+            !anchors[index]
+        ) {
+            return false;
+        }
+
+        const clean = (value) =>
+            value
+                .replace(/\|\|\|/g, " ")
+                .toLowerCase()
+                .replace(/<[^>]*>/g, "")
+                .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+        const anchor =
+            clean(anchors[index]);
+
+        if (!anchor) {
+            return false;
+        }
+
+        return !clean(english).includes(anchor);
+    },
+
+
     getEnglishWords(text) {
 
         return (
@@ -1000,6 +1079,10 @@ ${input}`;
                         translations[
                             number - 1
                         ] = value;
+
+                        if (translations.anchors) {
+                            translations.anchors[number - 1] = null;
+                        }
                     }
                 }
 
