@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
 <title>ShitSub - SRT Translator</title>
-<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=18">
 </head>
 <body>
 
@@ -29,6 +29,54 @@
 </video>
 
 <div class="video-overlay"></div>
+
+<!-- =====================================================
+     HAMBURGER MENU
+====================================================== -->
+<button
+    id="menuBtn"
+    class="menu-btn"
+    type="button"
+    aria-label="Open menu"
+    aria-expanded="false"
+    aria-controls="sideMenu"
+>
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<div id="menuBackdrop" class="menu-backdrop"></div>
+
+<aside id="sideMenu" class="side-menu" aria-hidden="true">
+    <div class="side-menu-head">
+        <div class="side-menu-title">Menu</div>
+        <button id="menuCloseBtn" class="menu-close" type="button" aria-label="Close menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
+        </button>
+    </div>
+
+    <a class="menu-item" href="downloads/ShitSub.apk" download>
+        <span class="menu-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/>
+            </svg>
+        </span>
+        <span class="menu-item-text">
+            <span class="menu-item-title">Download ShitSub App</span>
+            <span class="menu-item-sub">Android APK • Latest version</span>
+        </span>
+    </a>
+
+    <div class="menu-note">
+        For Android phones only. After downloading, open the file and allow
+        "Install unknown apps" if your phone asks.
+    </div>
+</aside>
 
 <!-- =====================================================
      MAIN APP
@@ -161,7 +209,7 @@
 <script src="js/srt-parser.js"></script>
 <script src="js/gemini-api.js?v=17"></script>
 <script src="js/translator.js"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/app.js?v=10"></script>
 
 </body>
 </html>
