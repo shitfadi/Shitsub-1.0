@@ -32,6 +32,11 @@ const resultCard = document.getElementById("resultCard");
 const resultInfo = document.getElementById("resultInfo");
 const downloadBtn = document.getElementById("downloadBtn");
 
+const menuBtn = document.getElementById("menuBtn");
+const menuBackdrop = document.getElementById("menuBackdrop");
+const sideMenu = document.getElementById("sideMenu");
+const menuCloseBtn = document.getElementById("menuCloseBtn");
+
 // =========================================================
 // STATE
 // =========================================================
@@ -159,6 +164,52 @@ function setupEventListeners() {
     translateBtn.addEventListener("click", handleTranslate);
     downloadBtn.addEventListener("click", handleDownload);
     document.addEventListener("keydown", handleKeyboardNavigation);
+
+    // Hamburger menu
+    menuBtn.addEventListener("click", toggleMenu);
+    menuCloseBtn.addEventListener("click", closeMenu);
+    menuBackdrop.addEventListener("click", closeMenu);
+
+    sideMenu.querySelectorAll(".menu-item").forEach((item) => {
+        item.addEventListener("click", () => {
+            setTimeout(closeMenu, 300);
+        });
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeMenu();
+        }
+    });
+}
+
+// =========================================================
+// HAMBURGER MENU
+// =========================================================
+
+function openMenu() {
+    sideMenu.classList.add("open");
+    menuBackdrop.classList.add("open");
+    menuBtn.classList.add("open");
+    menuBtn.setAttribute("aria-expanded", "true");
+    sideMenu.setAttribute("aria-hidden", "false");
+}
+
+function closeMenu() {
+    sideMenu.classList.remove("open");
+    menuBackdrop.classList.remove("open");
+    menuBtn.classList.remove("open");
+    menuBtn.setAttribute("aria-expanded", "false");
+    sideMenu.setAttribute("aria-hidden", "true");
+}
+
+function toggleMenu() {
+    if (sideMenu.classList.contains("open")) {
+        closeMenu();
+    }
+    else {
+        openMenu();
+    }
 }
 
 // =========================================================
