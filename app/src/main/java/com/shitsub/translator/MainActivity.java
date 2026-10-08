@@ -2,7 +2,9 @@ package com.shitsub.translator;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -14,6 +16,7 @@ import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -158,16 +161,124 @@ public class MainActivity extends Activity {
         webView.setDownloadListener(
                 (url, userAgent, contentDisposition, mimetype, contentLength) -> {
 
-                    Toast.makeText(
-                            MainActivity.this,
-                            "Download started",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    startFileDownload(
+                            url,
+                            userAgent,
+                            contentDisposition,
+                            mimetype
+                    );
                 }
         );
 
         // Load app
         webView.loadUrl("https://shitfadi.github.io/Shitsub-1.0/");
+    }
+
+
+    /**
+     * Downloads normal web files (for example the ShitSub APK)
+     * into the public Downloads folder using DownloadManager.
+     */
+    private void startFileDownload(
+            String url,
+            String userAgent,
+            String contentDisposition,
+            String mimetype
+    ) {
+
+        try {
+
+            if (url == null ||
+                    !(url.startsWith("http://") ||
+                      url.startsWith("https://"))) {
+
+                Toast.makeText(
+                        MainActivity.this,
+                        "This download type is not supported",
+                        Toast.LENGTH_LONG
+                ).show();
+
+                return;
+            }
+
+            // Android 9 and below need storage permission
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                    checkSelfPermission(
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    ) != PackageManager.PERMISSION_GRANTED) {
+
+                requestPermissions(
+                        new String[]{
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        },
+                        STORAGE_PERMISSION_REQUEST_CODE
+                );
+
+                Toast.makeText(
+                        MainActivity.this,
+                        "Allow storage permission, then tap download again",
+                        Toast.LENGTH_LONG
+                ).show();
+
+                return;
+            }
+
+            String fileName = URLUtil.guessFileName(
+                    url,
+                    contentDisposition,
+                    mimetype
+            );
+
+            DownloadManager.Request request =
+                    new DownloadManager.Request(Uri.parse(url));
+
+            if (mimetype != null && !mimetype.isEmpty()) {
+                request.setMimeType(mimetype);
+            }
+
+            if (userAgent != null) {
+                request.addRequestHeader("User-Agent", userAgent);
+            }
+
+            request.setTitle(fileName);
+            request.setDescription("Downloading...");
+            request.allowScanningByMediaScanner();
+
+            request.setNotificationVisibility(
+                    DownloadManager.Request
+                            .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+            );
+
+            request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    fileName
+            );
+
+            DownloadManager downloadManager =
+                    (DownloadManager) getSystemService(
+                            Context.DOWNLOAD_SERVICE
+                    );
+
+            downloadManager.enqueue(request);
+
+            Toast.makeText(
+                    MainActivity.this,
+                    "Downloading " + fileName
+                            + "\nIt will appear in your Downloads folder",
+                    Toast.LENGTH_LONG
+            ).show();
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            Toast.makeText(
+                    MainActivity.this,
+                    "Download failed: " + e.getMessage(),
+                    Toast.LENGTH_LONG
+            ).show();
+        }
     }
 
 
