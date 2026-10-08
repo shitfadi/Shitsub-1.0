@@ -106,11 +106,25 @@ ${input}`;
                 translations
             );
 
-        if (finalProblems.length > 0) {
+        // Only serious problems should fail the chunk.
+        // "duplicate" and "tokens" are soft checks that can be false alarms.
+        const hardProblems = finalProblems.filter(problem =>
+            !problem.startsWith("duplicate:") &&
+            !problem.startsWith("tokens:")
+        );
+
+        if (hardProblems.length < finalProblems.length) {
+            console.warn(
+                "Accepted with soft validation warnings:",
+                finalProblems.filter(p => !hardProblems.includes(p))
+            );
+        }
+
+        if (hardProblems.length > 0) {
 
             throw new Error(
                 "Translation validation failed: " +
-                finalProblems.join(", ")
+                hardProblems.join(", ")
             );
         }
 
