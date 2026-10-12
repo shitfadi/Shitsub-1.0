@@ -35,13 +35,7 @@ STRICT RULES:
 - Do not skip subtitles.
 - Do not summarize.
 - Do not add explanations.
-- Return ONLY subtitle IDs, SRC lines and MAL translations.
-- The SRC line must contain ONLY the first three English words.
-- The MAL line must contain ONLY the Malayalam translation.
-- Never repeat the English subtitle inside the MAL line.
-- Write EVERYTHING in Malayalam script. Never use English (Latin) letters in the MAL line.
-- Write names, places, brands, abbreviations and units in Malayalam script too (for example FBI becomes എഫ്ബിഐ, John becomes ജോൺ, OK becomes ഓകെ).
-- Numbers may stay as digits.
+- Return ONLY subtitle IDs and translations.
 - Use natural colloquial Kerala Malayalam.
 - Preserve the character's personality, emotion, tone, slang and profanity.
 - Do not unnecessarily make casual dialogue formal.
@@ -49,7 +43,9 @@ STRICT RULES:
 - Never use Devanagari, Tamil, Telugu, Kannada, Bengali, Assamese, Gujarati, Gurmukhi, Odia, Sinhala, Meitei or Ol Chiki script.
 - Do not transliterate Malayalam into another Indian script.
 - Do not mix Malayalam with another Indian script.
-- Keep names, numbers, URLs and important proper nouns accurate.
+- Write EVERYTHING in Malayalam script. Never use English (Latin) letters in the translation.
+- Write names, places, brands, abbreviations and units in Malayalam script too (for example FBI becomes എഫ്ബിഐ, John becomes ജോൺ, OK becomes ഓകെ). Spell each name the same way every time.
+- Numbers may stay as digits. Keep numbers and URLs accurate.
 - Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
 - Do not add Markdown.
 - Do not add quotation marks unless they are part of the original subtitle.
@@ -59,14 +55,15 @@ IMPORTANT DUPLICATE RULE:
 - However, never copy a translation from another subtitle simply because the English subtitles look similar.
 - Each translation must be based on the English text belonging to its own ID.
 
-FORMAT (follow exactly for EVERY subtitle):
+FORMAT:
 [[SUBTITLE_1]]
-SRC: first three words of that English subtitle, copied exactly
-MAL: Malayalam translation of that same subtitle
+Malayalam translation
 
 [[SUBTITLE_2]]
-SRC: first three words of that English subtitle, copied exactly
-MAL: Malayalam translation of that same subtitle
+Malayalam translation
+
+[[SUBTITLE_3]]
+Malayalam translation
 
 SUBTITLES:
 ${input}`;
@@ -81,12 +78,6 @@ ${input}`;
                 result,
                 chunk.length
             );
-
-        // Remove English copied next to the Malayalam
-        this.cleanEnglishEchoes(
-            chunk,
-            translations
-        );
 
         let problems =
             this.validateTranslations(
@@ -111,11 +102,6 @@ ${input}`;
                 );
         }
 
-        this.cleanEnglishEchoes(
-            chunk,
-            translations
-        );
-
         const finalProblems =
             this.validateTranslations(
                 chunk,
@@ -127,7 +113,6 @@ ${input}`;
         const hardProblems = finalProblems.filter(problem =>
             !problem.startsWith("duplicate:") &&
             !problem.startsWith("tokens:") &&
-            !problem.startsWith("echo:") &&
             !problem.startsWith("latin:")
         );
 
@@ -240,9 +225,6 @@ ${input}`;
         const translations =
             new Array(count);
 
-        const anchors =
-            new Array(count);
-
         const seen =
             new Set();
 
@@ -305,78 +287,18 @@ ${input}`;
                 const index =
                     currentNumber - 1;
 
-                // Same-line format: "SRC: ... MAL: ..."
-                const bothMatch =
-                    line.match(/^SRC\s*:\s*(.*?)\s+MAL\s*:\s*(.*)$/i);
-
-                if (bothMatch) {
-
-                    anchors[index] =
-                        bothMatch[1].trim();
-
-                    const bothText =
-                        bothMatch[2].trim();
-
-                    if (bothText) {
-
-                        if (!translations[index]) {
-
-                            translations[index] =
-                                bothText;
-
-                        } else {
-
-                            translations[index] +=
-                                " " + bothText;
-                        }
-                    }
-
-                    continue;
-                }
-
-                // SRC: echo of the English words (used for alignment check)
-                const srcMatch =
-                    line.match(/^SRC\s*:\s*(.*)$/i);
-
-                if (srcMatch) {
-
-                    anchors[index] =
-                        srcMatch[1].trim();
-
-                    continue;
-                }
-
-                // MAL: Malayalam translation
-                let textLine = line;
-
-                const malMatch =
-                    line.match(/^MAL\s*:\s*(.*)$/i);
-
-                if (malMatch) {
-
-                    textLine =
-                        malMatch[1].trim();
-
-                    if (!textLine) {
-                        continue;
-                    }
-                }
-
                 if (!translations[index]) {
 
                     translations[index] =
-                        textLine;
+                        line;
 
                 } else {
 
                     translations[index] +=
-                        " " + textLine;
+                        " " + line;
                 }
             }
         }
-
-        translations.anchors =
-            anchors;
 
         return translations;
     },
@@ -423,19 +345,6 @@ validateTranslations(
             );
 
             continue;
-        }
-
-        if (
-            this.hasMisalignedAnchor(
-                english,
-                translations.anchors,
-                i
-            )
-        ) {
-
-            problems.push(
-                `shift:${i + 1}`
-            );
         }
 
         if (
@@ -499,18 +408,6 @@ validateTranslations(
         }
 
         if (
-            this.hasEnglishEcho(
-                english,
-                translated
-            )
-        ) {
-
-            problems.push(
-                `echo:${i + 1}`
-            );
-        }
-
-        if (
             this.hasLatinLetters(
                 translated
             )
@@ -527,20 +424,6 @@ validateTranslations(
 
 
     hasBadLanguage(text) {
-
-    const malayalamCount =
-        (
-            text.match(
-                /[\u0D00-\u0D7F]/g
-            ) || []
-        ).length;
-
-    const latinCount =
-        (
-            text.match(
-                /[A-Za-z]/g
-            ) || []
-        ).length;
 
     // Detect other Indic scripts
     const foreignScriptPatterns = [
@@ -627,25 +510,8 @@ validateTranslations(
         return true;
     }
 
-    const letterCount =
-        malayalamCount +
-        latinCount;
-
-    // Very short subtitles such as:
-    // "അതെ", "ഇല്ല", "OK", "FBI"
-    // should not be rejected only because
-    // they contain very few characters.
-    if (
-        letterCount < 4
-    ) {
-        return false;
-    }
-
-    const ratio =
-        malayalamCount /
-        letterCount;
-
-    return ratio < 0.35;
+    // English letters are checked separately by hasLatinLetters()
+    return false;
 },
 
 
@@ -814,7 +680,7 @@ validateTranslations(
     },
 
 
-    // True when English (Latin) letters remain in the translation.
+    // True when ANY English (Latin) letter remains in the translation.
     // HTML tags, URLs and email addresses are ignored.
     hasLatinLetters(text) {
 
@@ -824,189 +690,6 @@ validateTranslations(
             .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "");
 
         return /[A-Za-z]/.test(stripped);
-    },
-
-
-    cleanForEcho(value) {
-
-        return String(value || "")
-            .replace(/\|\|\|/g, " ")
-            .replace(/<[^>]*>/g, "")
-            .toLowerCase()
-            .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
-    },
-
-
-    looksLikeEcho(candidate, english) {
-
-        if (!candidate || !english) {
-            return false;
-        }
-
-        if (candidate === english) {
-            return true;
-        }
-
-        // Gemini copied almost all of the English line
-        if (
-            english.startsWith(candidate) &&
-            candidate.length >= english.length * 0.85
-        ) {
-            return true;
-        }
-
-        if (
-            candidate.startsWith(english) &&
-            candidate.length <= english.length * 1.15
-        ) {
-            return true;
-        }
-
-        return false;
-    },
-
-
-    // Removes the English subtitle when Gemini copied it before
-    // or after the Malayalam, for example:
-    // "No, you don't understand. ഇല്ല, നിനക്ക് മനസ്സിലാകുന്നില്ല."
-    cleanEnglishEchoes(chunk, translations) {
-
-        const malayalam = /[\u0D00-\u0D7F]/;
-
-        let removed = 0;
-
-        for (let i = 0; i < chunk.length; i++) {
-
-            let text = translations[i];
-
-            if (!text || typeof text !== "string") {
-                continue;
-            }
-
-            const english = this.cleanForEcho(chunk[i].text);
-
-            if (english.length < 3) {
-                continue;
-            }
-
-            let changed = false;
-
-            // English copied BEFORE the Malayalam
-            const first = text.search(malayalam);
-
-            if (first > 0) {
-
-                const prefix = this.cleanForEcho(
-                    text.slice(0, first)
-                );
-
-                if (this.looksLikeEcho(prefix, english)) {
-
-                    text = text.slice(first).trim();
-                    changed = true;
-                }
-            }
-
-            // English copied AFTER the Malayalam
-            const letters = text.match(/[\u0D00-\u0D7F]/g);
-
-            if (letters && letters.length > 0) {
-
-                const lastIndex = text.lastIndexOf(
-                    letters[letters.length - 1]
-                );
-
-                if (lastIndex < text.length - 1) {
-
-                    const suffixRaw = text.slice(lastIndex + 1);
-
-                    const suffix = this.cleanForEcho(suffixRaw);
-
-                    const latinStart = suffixRaw.search(/[A-Za-z0-9]/);
-
-                    if (
-                        latinStart >= 0 &&
-                        this.looksLikeEcho(suffix, english)
-                    ) {
-
-                        // Keep punctuation such as "?" that follows the Malayalam
-                        text = (
-                            text.slice(0, lastIndex + 1) +
-                            suffixRaw.slice(0, latinStart)
-                        ).trim();
-
-                        changed = true;
-                    }
-                }
-            }
-
-            if (changed && text) {
-
-                translations[i] = text;
-                removed++;
-            }
-        }
-
-        if (removed > 0) {
-
-            console.warn(
-                `Removed copied English from ${removed} subtitle(s)`
-            );
-        }
-
-        return translations;
-    },
-
-
-    // English still sitting inside a Malayalam translation
-    hasEnglishEcho(english, translated) {
-
-        const source = this.cleanForEcho(english);
-
-        if (source.length < 12) {
-            return false;
-        }
-
-        if (!/[\u0D00-\u0D7F]/.test(translated)) {
-            return false;
-        }
-
-        return this.cleanForEcho(translated).includes(source);
-    },
-
-
-    hasMisalignedAnchor(
-        english,
-        anchors,
-        index
-    ) {
-
-        if (
-            !anchors ||
-            !anchors[index]
-        ) {
-            return false;
-        }
-
-        const clean = (value) =>
-            value
-                .replace(/\|\|\|/g, " ")
-                .toLowerCase()
-                .replace(/<[^>]*>/g, "")
-                .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
-                .replace(/\s+/g, " ")
-                .trim();
-
-        const anchor =
-            clean(anchors[index]);
-
-        if (!anchor) {
-            return false;
-        }
-
-        return !clean(english).includes(anchor);
     },
 
 
@@ -1260,11 +943,10 @@ STRICT RULES:
 - Do not translate the context as separate subtitles.
 - Use natural spoken Kerala Malayalam.
 - Preserve emotion, personality, slang and profanity.
-- Write EVERYTHING in Malayalam script. Never use English (Latin) letters.
+- Write everything in Malayalam script, including names and abbreviations. Never use English letters.
 - Do not use Tamil, Telugu, Kannada, Hindi or Bengali.
 - Preserve HTML tags exactly.
 - Preserve important numbers and URLs.
-- Write names, places, brands, abbreviations and units in Malayalam script (for example FBI becomes എഫ്ബിഐ, John becomes ജോൺ, OK becomes ഓകെ).
 - Return ONLY the requested IDs and their Malayalam translations.
 - Do not add explanations.
 
@@ -1315,10 +997,6 @@ ${input}`;
                         translations[
                             number - 1
                         ] = value;
-
-                        if (translations.anchors) {
-                            translations.anchors[number - 1] = null;
-                        }
                     }
                 }
 
