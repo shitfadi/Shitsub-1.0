@@ -35,7 +35,7 @@ STRICT RULES:
 - Do not skip subtitles.
 - Do not summarize.
 - Do not add explanations.
-- Return ONLY subtitle IDs and translations.
+- Return ONLY subtitle IDs, SRC lines and MAL translations.
 - Use natural colloquial Kerala Malayalam.
 - Preserve the character's personality, emotion, tone, slang and profanity.
 - Do not unnecessarily make casual dialogue formal.
@@ -43,9 +43,11 @@ STRICT RULES:
 - Never use Devanagari, Tamil, Telugu, Kannada, Bengali, Assamese, Gujarati, Gurmukhi, Odia, Sinhala, Meitei or Ol Chiki script.
 - Do not transliterate Malayalam into another Indian script.
 - Do not mix Malayalam with another Indian script.
-- Write EVERYTHING in Malayalam script. Never use English (Latin) letters in the translation.
+- Write EVERYTHING in Malayalam script. Never use English (Latin) letters in the MAL line.
+- The MAL line must contain ONLY the Malayalam translation. Never copy the English subtitle into the MAL line.
 - Write names, places, brands, abbreviations and units in Malayalam script too (for example FBI becomes എഫ്ബിഐ, John becomes ജോൺ, OK becomes ഓകെ). Spell each name the same way every time.
-- Numbers may stay as digits. Keep numbers and URLs accurate.
+- Numbers may stay as digits.
+- Keep numbers, URLs and the meaning of names accurate.
 - Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
 - Do not add Markdown.
 - Do not add quotation marks unless they are part of the original subtitle.
@@ -55,15 +57,14 @@ IMPORTANT DUPLICATE RULE:
 - However, never copy a translation from another subtitle simply because the English subtitles look similar.
 - Each translation must be based on the English text belonging to its own ID.
 
-FORMAT:
+FORMAT (follow exactly for EVERY subtitle):
 [[SUBTITLE_1]]
-Malayalam translation
+SRC: first three words of that English subtitle, copied exactly
+MAL: Malayalam translation of that same subtitle
 
 [[SUBTITLE_2]]
-Malayalam translation
-
-[[SUBTITLE_3]]
-Malayalam translation
+SRC: first three words of that English subtitle, copied exactly
+MAL: Malayalam translation of that same subtitle
 
 SUBTITLES:
 ${input}`;
@@ -78,6 +79,12 @@ ${input}`;
                 result,
                 chunk.length
             );
+
+        // Remove English that was copied next to the Malayalam
+        this.cleanEnglishEchoes(
+            chunk,
+            translations
+        );
 
         let problems =
             this.validateTranslations(
@@ -102,6 +109,11 @@ ${input}`;
                 );
         }
 
+        this.cleanEnglishEchoes(
+            chunk,
+            translations
+        );
+
         const finalProblems =
             this.validateTranslations(
                 chunk,
@@ -112,8 +124,7 @@ ${input}`;
         // "duplicate" and "tokens" are soft checks that can be false alarms.
         const hardProblems = finalProblems.filter(problem =>
             !problem.startsWith("duplicate:") &&
-            !problem.startsWith("tokens:") &&
-            !problem.startsWith("latin:")
+            !problem.startsWith("tokens:")
         );
 
         if (hardProblems.length < finalProblems.length) {
@@ -225,6 +236,9 @@ ${input}`;
         const translations =
             new Array(count);
 
+        const anchors =
+            new Array(count);
+
         const seen =
             new Set();
 
@@ -287,18 +301,49 @@ ${input}`;
                 const index =
                     currentNumber - 1;
 
+                // SRC: echo of the English words (used for alignment check)
+                const srcMatch =
+                    line.match(/^SRC\s*:\s*(.*)$/i);
+
+                if (srcMatch) {
+
+                    anchors[index] =
+                        srcMatch[1].trim();
+
+                    continue;
+                }
+
+                // MAL: Malayalam translation
+                let textLine = line;
+
+                const malMatch =
+                    line.match(/^MAL\s*:\s*(.*)$/i);
+
+                if (malMatch) {
+
+                    textLine =
+                        malMatch[1].trim();
+
+                    if (!textLine) {
+                        continue;
+                    }
+                }
+
                 if (!translations[index]) {
 
                     translations[index] =
-                        line;
+                        textLine;
 
                 } else {
 
                     translations[index] +=
-                        " " + line;
+                        " " + textLine;
                 }
             }
         }
+
+        translations.anchors =
+            anchors;
 
         return translations;
     },
@@ -345,6 +390,19 @@ validateTranslations(
             );
 
             continue;
+        }
+
+        if (
+            this.hasMisalignedAnchor(
+                english,
+                translations.anchors,
+                i
+            )
+        ) {
+
+            problems.push(
+                `shift:${i + 1}`
+            );
         }
 
         if (
@@ -406,17 +464,6 @@ validateTranslations(
                 `english:${i + 1}`
             );
         }
-
-        if (
-            this.hasLatinLetters(
-                translated
-            )
-        ) {
-
-            problems.push(
-                `latin:${i + 1}`
-            );
-        }
     }
 
     return problems;
@@ -424,6 +471,20 @@ validateTranslations(
 
 
     hasBadLanguage(text) {
+
+    const malayalamCount =
+        (
+            text.match(
+                /[\u0D00-\u0D7F]/g
+            ) || []
+        ).length;
+
+    const latinCount =
+        (
+            text.match(
+                /[A-Za-z]/g
+            ) || []
+        ).length;
 
     // Detect other Indic scripts
     const foreignScriptPatterns = [
@@ -510,8 +571,25 @@ validateTranslations(
         return true;
     }
 
-    // English letters are checked separately by hasLatinLetters()
-    return false;
+    const letterCount =
+        malayalamCount +
+        latinCount;
+
+    // Very short subtitles such as:
+    // "അതെ", "ഇല്ല", "OK", "FBI"
+    // should not be rejected only because
+    // they contain very few characters.
+    if (
+        letterCount < 4
+    ) {
+        return false;
+    }
+
+    const ratio =
+        malayalamCount /
+        letterCount;
+
+    return ratio < 0.35;
 },
 
 
@@ -680,16 +758,169 @@ validateTranslations(
     },
 
 
-    // True when ANY English (Latin) letter remains in the translation.
-    // HTML tags, URLs and email addresses are ignored.
-    hasLatinLetters(text) {
+    cleanForEcho(value) {
 
-        const stripped = String(text || "")
+        return String(value || "")
+            .replace(/\|\|\|/g, " ")
             .replace(/<[^>]*>/g, "")
-            .replace(/https?:\/\/[^\s]+/gi, "")
-            .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "");
+            .toLowerCase()
+            .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    },
 
-        return /[A-Za-z]/.test(stripped);
+
+    looksLikeEcho(candidate, english) {
+
+        if (!candidate || !english) {
+            return false;
+        }
+
+        if (candidate === english) {
+            return true;
+        }
+
+        // Gemini copied almost all of the English line
+        if (
+            english.startsWith(candidate) &&
+            candidate.length >= english.length * 0.85
+        ) {
+            return true;
+        }
+
+        if (
+            candidate.startsWith(english) &&
+            candidate.length <= english.length * 1.15
+        ) {
+            return true;
+        }
+
+        return false;
+    },
+
+
+    // Local only (no API call): removes the English subtitle when
+    // Gemini copied it before or after the Malayalam, for example:
+    // "No, you don't understand. ഇല്ല, നിനക്ക് മനസ്സിലാകുന്നില്ല."
+    cleanEnglishEchoes(chunk, translations) {
+
+        const malayalam = /[\u0D00-\u0D7F]/;
+
+        let removed = 0;
+
+        for (let i = 0; i < chunk.length; i++) {
+
+            let text = translations[i];
+
+            if (!text || typeof text !== "string") {
+                continue;
+            }
+
+            const english = this.cleanForEcho(chunk[i].text);
+
+            if (english.length < 3) {
+                continue;
+            }
+
+            let changed = false;
+
+            // English copied BEFORE the Malayalam
+            const first = text.search(malayalam);
+
+            if (first > 0) {
+
+                const prefix = this.cleanForEcho(
+                    text.slice(0, first)
+                );
+
+                if (this.looksLikeEcho(prefix, english)) {
+
+                    text = text.slice(first).trim();
+                    changed = true;
+                }
+            }
+
+            // English copied AFTER the Malayalam
+            const letters = text.match(/[\u0D00-\u0D7F]/g);
+
+            if (letters && letters.length > 0) {
+
+                const lastIndex = text.lastIndexOf(
+                    letters[letters.length - 1]
+                );
+
+                if (lastIndex < text.length - 1) {
+
+                    const suffixRaw = text.slice(lastIndex + 1);
+
+                    const suffix = this.cleanForEcho(suffixRaw);
+
+                    const latinStart = suffixRaw.search(/[A-Za-z0-9]/);
+
+                    if (
+                        latinStart >= 0 &&
+                        this.looksLikeEcho(suffix, english)
+                    ) {
+
+                        // Keep punctuation such as "?" after the Malayalam
+                        text = (
+                            text.slice(0, lastIndex + 1) +
+                            suffixRaw.slice(0, latinStart)
+                        ).trim();
+
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed && text) {
+
+                translations[i] = text;
+                removed++;
+            }
+        }
+
+        if (removed > 0) {
+
+            console.warn(
+                `Removed copied English from ${removed} subtitle(s)`
+            );
+        }
+
+        return translations;
+    },
+
+
+    hasMisalignedAnchor(
+        english,
+        anchors,
+        index
+    ) {
+
+        if (
+            !anchors ||
+            !anchors[index]
+        ) {
+            return false;
+        }
+
+        const clean = (value) =>
+            value
+                .replace(/\|\|\|/g, " ")
+                .toLowerCase()
+                .replace(/<[^>]*>/g, "")
+                .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+        const anchor =
+            clean(anchors[index]);
+
+        if (!anchor) {
+            return false;
+        }
+
+        return !clean(english).includes(anchor);
     },
 
 
@@ -943,10 +1174,10 @@ STRICT RULES:
 - Do not translate the context as separate subtitles.
 - Use natural spoken Kerala Malayalam.
 - Preserve emotion, personality, slang and profanity.
-- Write everything in Malayalam script, including names and abbreviations. Never use English letters.
+- Write everything in Malayalam script, including names and abbreviations. Never use English letters and never repeat the English text.
 - Do not use Tamil, Telugu, Kannada, Hindi or Bengali.
 - Preserve HTML tags exactly.
-- Preserve important numbers and URLs.
+- Preserve important numbers, URLs and proper nouns.
 - Return ONLY the requested IDs and their Malayalam translations.
 - Do not add explanations.
 
@@ -997,6 +1228,10 @@ ${input}`;
                         translations[
                             number - 1
                         ] = value;
+
+                        if (translations.anchors) {
+                            translations.anchors[number - 1] = null;
+                        }
                     }
                 }
 
