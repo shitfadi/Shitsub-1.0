@@ -26,7 +26,11 @@ STRICT RULES:
 - Every complete English sentence, question, statement, command, or dialogue line MUST be translated into Malayalam.
 - NEVER leave a complete English sentence unchanged.
 - If several subtitles form an English conversation, translate EVERY line.
-- English words may remain only for names, places, brands, acronyms, technical terms, or words naturally used inside Malayalam speech.
+- Write EVERYTHING in Malayalam script. Never use English (Latin) letters in the translation, not even a single word.
+- Write names, places, brands, acronyms, abbreviations and technical terms in Malayalam script too (for example FBI becomes എഫ്ബിഐ, OK becomes ഓകെ, John becomes ജോൺ). Spell each name the same way every time.
+- Numbers may stay as digits.
+- Never copy the English subtitle before or after the Malayalam. Write only the Malayalam translation.
+- These rules override any other instruction about keeping names, acronyms or proper nouns in English.
 - Do NOT output Tamil, Telugu, Kannada, Hindi, Bengali, or any other Indian language.
 - The translation must be Malayalam, using natural spoken Kerala Malayalam.
 - Do NOT use formal, literary, textbook, or robotic Malayalam.
@@ -44,7 +48,9 @@ FINAL CHECK:
 Before returning each translation, make sure:
 1. It is translated into Malayalam if the original is English dialogue.
 2. It is not a complete English sentence.
-3. It contains no accidental Tamil, Telugu, Kannada, Hindi, Bengali, or other Indian-language text.
-4. The meaning and emotion are preserved.
+3. It contains no English letters at all. Names and abbreviations are written in Malayalam script.
+4. It does not repeat the English subtitle anywhere.
+5. It contains no accidental Tamil, Telugu, Kannada, Hindi, Bengali, or other Indian-language text.
+6. The meaning and emotion are preserved.
 
 Return ONLY the translations in the required output format.`;
