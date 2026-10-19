@@ -2,7 +2,7 @@ const CONFIG = {
     MODEL: "gemini-3.5-flash-lite",
     API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
 
-    CHUNK_SIZE: 150,
+    CHUNK_SIZE: 200,
 MAX_PARALLEL: 2,
 MIN_PARALLEL: 1,
 
@@ -19,7 +19,7 @@ BATCH_DELAY: 8300,
     }
 };
 
-const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natural, colloquial Kerala Malayalam.
+const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natural spoken Kerala Malayalam with street-level local flavor and everyday slang (no bookish words). 
 
 STRICT RULES:
 - Translate EVERY subtitle. Never skip, omit, merge, or summarize.
@@ -50,7 +50,7 @@ Before returning each translation, make sure:
 2. It is not a complete English sentence.
 3. It contains no English letters at all. Names and abbreviations are written in Malayalam script.
 4. It does not repeat the English subtitle anywhere.
-5. It contains no accidental Tamil, Telugu, Kannada, Hindi, Bengali, or other Indian-language text.
+5. It contains no accidental English, Tamil, Telugu, Kannada, Hindi, Bengali, or other non-Malayalam language text.
 6. The meaning and emotion are preserved.
 
 Return ONLY the translations in the required output format.`;
