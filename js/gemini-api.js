@@ -126,7 +126,8 @@ ${input}`;
             !problem.startsWith("duplicate:") &&
             !problem.startsWith("tokens:") &&
             !problem.startsWith("tags:") &&
-            !problem.startsWith("latin:")
+            !problem.startsWith("latin:") &&
+            !problem.startsWith("language:")
         );
 
         if (hardProblems.length < finalProblems.length) {
