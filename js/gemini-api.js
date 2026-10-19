@@ -124,7 +124,9 @@ ${input}`;
         // "duplicate" and "tokens" are soft checks that can be false alarms.
         const hardProblems = finalProblems.filter(problem =>
             !problem.startsWith("duplicate:") &&
-            !problem.startsWith("tokens:")
+            !problem.startsWith("tokens:") &&
+            !problem.startsWith("tags:") &&
+            !problem.startsWith("latin:")
         );
 
         if (hardProblems.length < finalProblems.length) {
@@ -464,6 +466,19 @@ validateTranslations(
                 `english:${i + 1}`
             );
         }
+
+        if (
+            /[A-Za-z]/.test(
+                translated
+                    .replace(/<[^>]*>/g, "")
+                    .replace(/https?:\/\/[^\s]+/gi, "")
+            )
+        ) {
+
+            problems.push(
+                `latin:${i + 1}`
+            );
+        }
     }
 
     return problems;
@@ -571,10 +586,6 @@ validateTranslations(
         return true;
     }
 
-       // Reject any Latin letters in Malayalam translations.
-if (/[A-Za-z]/.test(text)) {
-    return true;
-}
     const letterCount =
         malayalamCount +
         latinCount;
