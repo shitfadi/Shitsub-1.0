@@ -23,6 +23,9 @@ const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natura
 
 STRICT RULES:
 - Translate EVERY subtitle. Never skip, omit, merge, or summarize.
+- Never use English letters. Write every English word, name, place, brand and abbreviation in Malayalam letters (FBI = എഫ്ബിഐ, OK = ഓകെ, Mr. = മിസ്റ്റർ, John = ജോൺ, New York = ന്യൂയോർക്ക്, iPhone = ഐഫോൺ, bangs = ബാങ്സ്).
+Never use Tamil, Hindi or any other language's words. If Malayalam has no common word, write the English word in Malayalam letters.
+Spell every name the same way every time.
 - Every complete English sentence, question, statement, command, or dialogue line MUST be translated into Malayalam.
 - NEVER leave a complete English sentence unchanged.
 - If several subtitles form an English conversation, translate EVERY line.
