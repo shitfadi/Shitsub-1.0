@@ -14,7 +14,7 @@ const GeminiAPI = {
         const prompt = `${customPrompt}
 
 IMPORTANT:
-Translate EVERY subtitle below into natural, spoken Kerala Malayalam.
+Translate EVERY subtitle below into natural spoken Kerala Malayalam with street-level local flavor and everyday slang (no bookish words). 
 
 The subtitles are identified by immutable IDs.
 
@@ -571,6 +571,10 @@ validateTranslations(
         return true;
     }
 
+       // Reject any Latin letters in Malayalam translations.
+if (/[A-Za-z]/.test(text)) {
+    return true;
+}
     const letterCount =
         malayalamCount +
         latinCount;
