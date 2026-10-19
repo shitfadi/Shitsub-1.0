@@ -5,6 +5,9 @@
 
 const GeminiAPI = {
 
+    // Malayalam spellings of English words, remembered for the whole file
+    wordCache: {},
+
     async translateChunk(chunk, apiKey, customPrompt) {
 
         const input = chunk.map((subtitle, index) => {
@@ -84,6 +87,15 @@ ${input}`;
         this.cleanEnglishEchoes(
             chunk,
             translations
+        );
+
+        // Replace leftover English words with Malayalam spellings
+        // (one small call per chunk, cached for the whole file)
+        await this.fixEnglishWords(
+            chunk,
+            translations,
+            apiKey,
+            customPrompt
         );
 
         let problems =
@@ -907,6 +919,231 @@ validateTranslations(
     },
 
 
+    // ---------------------------------------------------------
+    // English words left inside a translation.
+    // Asks Gemini ONLY for those words in Malayalam letters and
+    // swaps them in locally. HTML tags and URLs are never touched.
+    // ---------------------------------------------------------
+
+    englishWordPattern() {
+
+        return /[A-Za-z]+(?:['’.\-][A-Za-z]+)*/g;
+    },
+
+
+    findEnglishWords(text) {
+
+        const words = [];
+
+        const parts = String(text || "").split(
+            /(<[^>]*>|https?:\/\/[^\s]+)/gi
+        );
+
+        parts.forEach((part, index) => {
+
+            // odd positions are tags and URLs
+            if (index % 2 === 1) {
+                return;
+            }
+
+            (part.match(this.englishWordPattern()) || [])
+                .forEach(word => words.push(word));
+        });
+
+        return words;
+    },
+
+
+    // English words of a line, or [] when the line is mostly English
+    // (those lines are re-translated fully by the normal recovery).
+    wordsToFix(text) {
+
+        if (!text || typeof text !== "string") {
+            return [];
+        }
+
+        const words = this.findEnglishWords(text);
+
+        if (words.length === 0) {
+            return [];
+        }
+
+        // A Latin letter stuck to a Malayalam letter (for example "pക്ഷേ")
+        // is a broken Malayalam word, not an English word. Sounding it out
+        // would give a wrong word, so leave it for the normal re-translation.
+        const withoutProtected = text
+            .replace(/<[^>]*>/g, " ")
+            .replace(/https?:\/\/[^\s]+/gi, " ");
+
+        if (/[A-Za-z][\u0D00-\u0D7F]|[\u0D00-\u0D7F][A-Za-z]/.test(withoutProtected)) {
+            return [];
+        }
+
+        const latinCount =
+            words.join("").replace(/[^A-Za-z]/g, "").length;
+
+        const malayalamCount =
+            (text.match(/[\u0D00-\u0D7F]/g) || []).length;
+
+        if (words.length > 3 || latinCount > malayalamCount) {
+            return [];
+        }
+
+        return words;
+    },
+
+
+    replaceEnglishWords(text) {
+
+        const parts = text.split(
+            /(<[^>]*>|https?:\/\/[^\s]+)/gi
+        );
+
+        return parts.map((part, index) => {
+
+            if (index % 2 === 1) {
+                return part;
+            }
+
+            return part.replace(
+                this.englishWordPattern(),
+                word => this.wordCache[word.toLowerCase()] || word
+            );
+
+        }).join("");
+    },
+
+
+    async fixEnglishWords(
+        chunk,
+        translations,
+        apiKey,
+        customPrompt
+    ) {
+
+        try {
+
+            const wanted = new Map();
+
+            for (let i = 0; i < chunk.length; i++) {
+
+                for (const word of this.wordsToFix(translations[i])) {
+
+                    const key = word.toLowerCase();
+
+                    if (key in this.wordCache || wanted.has(key)) {
+                        continue;
+                    }
+
+                    wanted.set(key, {
+                        word: word,
+                        context: String(chunk[i].text || "")
+                            .replace(/\|\|\|/g, " ")
+                            .trim()
+                            .slice(0, 120)
+                    });
+                }
+            }
+
+            if (wanted.size > 0) {
+
+                const list = [...wanted.values()];
+
+                const prompt = `${customPrompt}
+
+NEW TASK (this overrides any output-format instruction above):
+Write each English word below in Malayalam letters, using the usual Malayalam spelling.
+- Never use English letters.
+- Never use Tamil, Hindi or any other language's words.
+- Names are written the way they sound.
+- Use the context sentence only to understand the word.
+
+Return ONLY one line per word, in exactly this form:
+1: Malayalam word
+2: Malayalam word
+
+WORDS:
+${list.map((item, n) =>
+    `${n + 1}. ${item.word}   (context: ${item.context})`
+).join("\n")}`;
+
+                const result = await this.callGemini(
+                    prompt,
+                    apiKey
+                );
+
+                const answers = {};
+
+                result.split(/\r?\n/).forEach(line => {
+
+                    const match = line.match(
+                        /^\s*(\d+)\s*[:.)=\-]\s*(.+?)\s*$/
+                    );
+
+                    if (match) {
+
+                        answers[match[1]] = match[2]
+                            .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+                            .trim();
+                    }
+                });
+
+                list.forEach((item, n) => {
+
+                    const value = answers[String(n + 1)];
+
+                    const usable =
+                        value &&
+                        /[\u0D00-\u0D7F]/.test(value) &&
+                        !/[A-Za-z]/.test(value) &&
+                        !this.hasBadLanguage(value);
+
+                    // "" means: asked already, no usable answer
+                    this.wordCache[item.word.toLowerCase()] =
+                        usable ? value : "";
+                });
+            }
+
+            let replaced = 0;
+
+            for (let i = 0; i < chunk.length; i++) {
+
+                const text = translations[i];
+
+                if (this.wordsToFix(text).length === 0) {
+                    continue;
+                }
+
+                const fixed = this.replaceEnglishWords(text);
+
+                if (fixed !== text) {
+
+                    translations[i] = fixed;
+                    replaced++;
+                }
+            }
+
+            if (replaced > 0) {
+
+                console.log(
+                    `Replaced English words in ${replaced} subtitle(s)`
+                );
+            }
+
+        } catch (error) {
+
+            // Never stop the translation because of this step.
+            // Normal validation and recovery still run afterwards.
+            console.warn(
+                "English word fix skipped:",
+                error
+            );
+        }
+
+        return translations;
+    },
+
+
     hasMisalignedAnchor(
         english,
         anchors,
@@ -1540,6 +1777,6 @@ ${input}`;
 
 
     reset() {
-        // Nothing to reset.
+        this.wordCache = {};
     }
 };
