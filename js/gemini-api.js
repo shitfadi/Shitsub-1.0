@@ -126,6 +126,14 @@ ${input}`;
             translations
         );
 
+        // Last chance for lines that still have a wrong script or English
+        await this.fixStubbornLines(
+            chunk,
+            translations,
+            apiKey,
+            customPrompt
+        );
+
         const finalProblems =
             this.validateTranslations(
                 chunk,
@@ -916,6 +924,201 @@ validateTranslations(
         }
 
         return translations;
+    },
+
+
+    // ---------------------------------------------------------
+    // Last step for lines that STILL contain a wrong script (for
+    // example Korean letters inside a Malayalam word) or English after
+    // the normal recovery. Each such line is sent ALONE to Gemini:
+    // only its English sentence, with a short "translate this" prompt.
+    //
+    // Alignment is safe: the English comes from the line's own position
+    // and the answer is written back to that same position. Timestamps
+    // and numbers are never touched. A reply is accepted only if it is a
+    // single clean translation, otherwise the old line is kept.
+    // Runs only when such lines exist and never throws.
+    // ---------------------------------------------------------
+
+    async fixStubbornLines(
+        chunk,
+        translations,
+        apiKey,
+        customPrompt
+    ) {
+
+        const MAX_LINES_PER_CHUNK = 10;
+        const MAX_ATTEMPTS_PER_LINE = 2;
+
+        try {
+
+            const indexes = [
+                ...new Set(
+                    this.validateTranslations(chunk, translations)
+                        .filter(problem =>
+                            problem.startsWith("language:") ||
+                            problem.startsWith("latin:")
+                        )
+                        .map(problem =>
+                            parseInt(problem.split(":")[1], 10)
+                        )
+                )
+            ].filter(number =>
+                number >= 1 && number <= chunk.length
+            );
+
+            if (indexes.length === 0) {
+                return translations;
+            }
+
+            if (indexes.length > MAX_LINES_PER_CHUNK) {
+
+                console.warn(
+                    `${indexes.length} subtitles need a single-line retry; ` +
+                    `only the first ${MAX_LINES_PER_CHUNK} will be retried`
+                );
+            }
+
+            for (const number of indexes.slice(0, MAX_LINES_PER_CHUNK)) {
+
+                const index = number - 1;
+
+                const english = chunk[index].text || "";
+
+                const breaks =
+                    (english.match(/\|\|\|/g) || []).length;
+
+                const prompt = `Translate this English sentence to natural Kerala local Malayalam.
+Use Malayalam letters only. Write names and abbreviations in Malayalam letters.
+Keep any <i> tags and ||| line breaks exactly as they are.
+Return only the translation, nothing else.
+
+SENTENCE:
+${english}`;
+
+                let fixed = null;
+
+                for (
+                    let attempt = 1;
+                    attempt <= MAX_ATTEMPTS_PER_LINE && !fixed;
+                    attempt++
+                ) {
+
+                    const result = await this.callGemini(
+                        prompt,
+                        apiKey
+                    );
+
+                    const candidate = this.cleanSingleTranslation(
+                        result,
+                        english
+                    );
+
+                    if (
+                        this.isCleanSingleTranslation(
+                            english,
+                            candidate,
+                            breaks
+                        )
+                    ) {
+                        fixed = candidate;
+                    }
+                    else if (attempt < MAX_ATTEMPTS_PER_LINE) {
+                        await this.sleep(1000);
+                    }
+                }
+
+                if (fixed) {
+
+                    translations[index] = fixed;
+
+                    if (translations.anchors) {
+                        translations.anchors[index] = null;
+                    }
+
+                    console.log(
+                        `Subtitle ${number} was translated again on its own`
+                    );
+                }
+                else {
+
+                    console.warn(
+                        `Subtitle ${number} could not be fixed, kept as it is`
+                    );
+                }
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "Single-line retry skipped:",
+                error
+            );
+        }
+
+        return translations;
+    },
+
+
+    // Turns Gemini's reply into one subtitle text:
+    // removes code fences and surrounding quotes, and turns real
+    // line breaks into the ||| marker used by the subtitle parser.
+    cleanSingleTranslation(result, english) {
+
+        let text = String(result || "")
+            .replace(/^```[a-z]*\s*/i, "")
+            .replace(/```\s*$/i, "")
+            .trim();
+
+        text = text
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean)
+            .join("|||");
+
+        const quoted = /^["“].*["”]$/.test(text);
+
+        if (quoted && !/^["“]/.test(String(english || "").trim())) {
+            text = text.slice(1, -1).trim();
+        }
+
+        return text;
+    },
+
+
+    // A reply is accepted only if it is ONE clean translation:
+    // same number of line breaks, Malayalam only, tags unchanged.
+    isCleanSingleTranslation(english, text, breaks) {
+
+        if (!text || !text.trim()) {
+            return false;
+        }
+
+        if ((text.match(/\|\|\|/g) || []).length !== breaks) {
+            return false;
+        }
+
+        if (!/[\u0D00-\u0D7F]/.test(text)) {
+            return false;
+        }
+
+        if (this.hasBadLanguage(text)) {
+            return false;
+        }
+
+        const withoutProtected = text
+            .replace(/<[^>]*>/g, "")
+            .replace(/https?:\/\/[^\s]+/gi, "");
+
+        if (/[A-Za-z]/.test(withoutProtected)) {
+            return false;
+        }
+
+        if (this.hasBrokenTags(english, text)) {
+            return false;
+        }
+
+        return true;
     },
 
 
