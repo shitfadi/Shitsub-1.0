@@ -1,23 +1,107 @@
 /* =========================================================
    SHITSUB - Gemini API
    Robust translation + validation + targeted recovery
+   Multi-language ready (see CONFIG.TARGET_LANGUAGE / LANGUAGES)
    ========================================================= */
 
 const GeminiAPI = {
 
-    // Malayalam spellings of English words, remembered for the whole file
+    // Target-language spellings of English words, remembered for the whole file
     wordCache: {},
 
+    // Cache of built regexes (cheap speed-up)
+    _rxCache: {},
+
+
+    // ---------------------------------------------------------
+    // Language helpers
+    // ---------------------------------------------------------
+
+    lang() {
+
+        return LANGUAGES[CONFIG.TARGET_LANGUAGE] ||
+            LANGUAGES.malayalam;
+    },
+
+    rx(source, flags) {
+
+        const key = flags + "/" + source;
+
+        return this._rxCache[key] ||
+            (this._rxCache[key] = new RegExp(source, flags));
+    },
+
+    scriptSource() {
+
+        return `\\p{Script=${this.lang().script}}`;
+    },
+
+    hasTarget(text) {
+
+        return this.rx(
+            this.scriptSource(),
+            "u"
+        ).test(text || "");
+    },
+
+    countTarget(text) {
+
+        return (
+            String(text || "").match(
+                this.rx(this.scriptSource(), "gu")
+            ) || []
+        ).length;
+    },
+
+    // Prompt to use: the person's custom prompt, else the language default
+    basePrompt(customPrompt) {
+
+        return (customPrompt && String(customPrompt).trim())
+            ? customPrompt
+            : this.lang().prompt;
+    },
+
+    // Script rules written into the main prompt
+    scriptRules() {
+
+        const L = this.lang();
+
+        const others = FOREIGN_SCRIPT_NAMES
+            .filter(name => name !== L.script)
+            .join(", ");
+
+        if (L.latinAllowed) {
+
+            return `- Write the translation in ${L.name} only.
+- Never use ${others} or any other non-Latin script.
+- Never copy the English subtitle into the translation line.
+- Keep numbers, URLs and the meaning of names accurate.`;
+        }
+
+        return `- Use ${L.name} script for ${L.name} dialogue.
+- Never use ${others} or any other script.
+- Do not transliterate ${L.name} into another script.
+- Do not mix ${L.name} with another script.
+- Write EVERYTHING in ${L.name} script. Never use English (Latin) letters in the MAL line.
+- The MAL line must contain ONLY the ${L.name} translation. Never copy the English subtitle into the MAL line.
+- Write names, places, brands, abbreviations and units in ${L.name} script too (for example ${L.examples}). Spell each name the same way every time.
+- Numbers may stay as digits.
+- Keep numbers, URLs and the meaning of names accurate.`;
+    },
+
+
     async translateChunk(chunk, apiKey, customPrompt) {
+
+        const L = this.lang();
 
         const input = chunk.map((subtitle, index) => {
             return `[[SUBTITLE_${index + 1}]]\n${subtitle.text}`;
         }).join("\n\n");
 
-        const prompt = `${customPrompt}
+        const prompt = `${this.basePrompt(customPrompt)}
 
 IMPORTANT:
-Translate EVERY subtitle below into natural spoken Kerala Malayalam with street-level local flavor and everyday slang (no bookish words). 
+Translate EVERY subtitle below into ${L.dialect}${L.style ? " " + L.style : ""}.
 
 The subtitles are identified by immutable IDs.
 
@@ -39,35 +123,27 @@ STRICT RULES:
 - Do not summarize.
 - Do not add explanations.
 - Return ONLY subtitle IDs, SRC lines and MAL translations.
-- Use natural colloquial Kerala Malayalam.
+- Use ${L.dialect}.
 - Preserve the character's personality, emotion, tone, slang and profanity.
 - Do not unnecessarily make casual dialogue formal.
-- Use Malayalam script for Malayalam dialogue.
-- Never use Devanagari, Tamil, Telugu, Kannada, Bengali, Assamese, Gujarati, Gurmukhi, Odia, Sinhala, Meitei or Ol Chiki script.
-- Do not transliterate Malayalam into another Indian script.
-- Do not mix Malayalam with another Indian script.
-- Write EVERYTHING in Malayalam script. Never use English (Latin) letters in the MAL line.
-- The MAL line must contain ONLY the Malayalam translation. Never copy the English subtitle into the MAL line.
-- Write names, places, brands, abbreviations and units in Malayalam script too (for example FBI becomes എഫ്ബിഐ, John becomes ജോൺ, OK becomes ഓകെ). Spell each name the same way every time.
-- Numbers may stay as digits.
-- Keep numbers, URLs and the meaning of names accurate.
+${this.scriptRules()}
 - Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
 - Do not add Markdown.
 - Do not add quotation marks unless they are part of the original subtitle.
 
 IMPORTANT DUPLICATE RULE:
-- Different English subtitles may legitimately have similar Malayalam translations.
+- Different English subtitles may legitimately have similar ${L.name} translations.
 - However, never copy a translation from another subtitle simply because the English subtitles look similar.
 - Each translation must be based on the English text belonging to its own ID.
 
 FORMAT (follow exactly for EVERY subtitle):
 [[SUBTITLE_1]]
 SRC: first three words of that English subtitle, copied exactly
-MAL: Malayalam translation of that same subtitle
+MAL: ${L.name} translation of that same subtitle
 
 [[SUBTITLE_2]]
 SRC: first three words of that English subtitle, copied exactly
-MAL: Malayalam translation of that same subtitle
+MAL: ${L.name} translation of that same subtitle
 
 SUBTITLES:
 ${input}`;
@@ -83,13 +159,13 @@ ${input}`;
                 chunk.length
             );
 
-        // Remove English that was copied next to the Malayalam
+        // Remove English that was copied next to the translation
         this.cleanEnglishEchoes(
             chunk,
             translations
         );
 
-        // Replace leftover English words with Malayalam spellings
+        // Replace leftover English words with target-language spellings
         // (one small call per chunk, cached for the whole file)
         await this.fixEnglishWords(
             chunk,
@@ -336,7 +412,7 @@ ${input}`;
                     continue;
                 }
 
-                // MAL: Malayalam translation
+                // MAL: the translation
                 let textLine = line;
 
                 const malMatch =
@@ -372,261 +448,196 @@ ${input}`;
     },
 
 
-validateTranslations(
-    chunk,
-    translations
-) {
-
-    const problems = [];
-
-    if (
-        !Array.isArray(translations) ||
-        translations.length !== chunk.length
+    validateTranslations(
+        chunk,
+        translations
     ) {
 
-        problems.push(
-            "translation count mismatch"
-        );
+        const problems = [];
+
+        const L = this.lang();
+
+        if (
+            !Array.isArray(translations) ||
+            translations.length !== chunk.length
+        ) {
+
+            problems.push(
+                "translation count mismatch"
+            );
+
+            return problems;
+        }
+
+        for (
+            let i = 0;
+            i < chunk.length;
+            i++
+        ) {
+
+            const english =
+                chunk[i].text || "";
+
+            const translated =
+                translations[i];
+
+            if (
+                !translated ||
+                !translated.trim()
+            ) {
+
+                problems.push(
+                    `missing:${i + 1}`
+                );
+
+                continue;
+            }
+
+            if (
+                this.hasMisalignedAnchor(
+                    english,
+                    translations.anchors,
+                    i
+                )
+            ) {
+
+                problems.push(
+                    `shift:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBadLanguage(
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `language:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBrokenTags(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `tags:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBrokenImportantTokens(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `tokens:${i + 1}`
+                );
+            }
+
+            if (
+                this.isSuspiciousDuplicate(
+                    chunk,
+                    translations,
+                    i
+                )
+            ) {
+
+                problems.push(
+                    `duplicate:${i + 1}`
+                );
+            }
+
+            // The next two checks only make sense when the target
+            // language does NOT use Latin letters.
+            if (!L.latinAllowed) {
+
+                if (
+                    this.isSuspiciousEnglishCarryover(
+                        english,
+                        translated
+                    )
+                ) {
+
+                    problems.push(
+                        `english:${i + 1}`
+                    );
+                }
+
+                if (
+                    /[A-Za-z]/.test(
+                        translated
+                            .replace(/<[^>]*>/g, "")
+                            .replace(/https?:\/\/[^\s]+/gi, "")
+                    )
+                ) {
+
+                    problems.push(
+                        `latin:${i + 1}`
+                    );
+                }
+            }
+        }
 
         return problems;
-    }
-
-    for (
-        let i = 0;
-        i < chunk.length;
-        i++
-    ) {
-
-        const english =
-            chunk[i].text || "";
-
-        const translated =
-            translations[i];
-
-        if (
-            !translated ||
-            !translated.trim()
-        ) {
-
-            problems.push(
-                `missing:${i + 1}`
-            );
-
-            continue;
-        }
-
-        if (
-            this.hasMisalignedAnchor(
-                english,
-                translations.anchors,
-                i
-            )
-        ) {
-
-            problems.push(
-                `shift:${i + 1}`
-            );
-        }
-
-        if (
-            this.hasBadLanguage(
-                translated
-            )
-        ) {
-
-            problems.push(
-                `language:${i + 1}`
-            );
-        }
-
-        if (
-            this.hasBrokenTags(
-                english,
-                translated
-            )
-        ) {
-
-            problems.push(
-                `tags:${i + 1}`
-            );
-        }
-
-        if (
-            this.hasBrokenImportantTokens(
-                english,
-                translated
-            )
-        ) {
-
-            problems.push(
-                `tokens:${i + 1}`
-            );
-        }
-
-        if (
-            this.isSuspiciousDuplicate(
-                chunk,
-                translations,
-                i
-            )
-        ) {
-
-            problems.push(
-                `duplicate:${i + 1}`
-            );
-        }
-
-        if (
-            this.isSuspiciousEnglishCarryover(
-                english,
-                translated
-            )
-        ) {
-
-            problems.push(
-                `english:${i + 1}`
-            );
-        }
-
-        if (
-            /[A-Za-z]/.test(
-                translated
-                    .replace(/<[^>]*>/g, "")
-                    .replace(/https?:\/\/[^\s]+/gi, "")
-            )
-        ) {
-
-            problems.push(
-                `latin:${i + 1}`
-            );
-        }
-    }
-
-    return problems;
-},
+    },
 
 
+    // A line is "bad language" when it contains a letter from ANY script
+    // other than the target script (and Latin, which is checked
+    // separately). This catches stray Ethiopic, Korean, Cyrillic, Arabic,
+    // Tamil... letters without needing a list of scripts.
     hasBadLanguage(text) {
 
-    const malayalamCount =
-        (
-            text.match(
-                /[\u0D00-\u0D7F]/g
-            ) || []
-        ).length;
+        const L = this.lang();
 
-    const latinCount =
-        (
-            text.match(
-                /[A-Za-z]/g
-            ) || []
-        ).length;
+        const clean = String(text || "")
+            .replace(/<[^>]*>/g, "")
+            .replace(/https?:\/\/[^\s]+/gi, "");
 
-    // Detect other Indic scripts
-    const foreignScriptPatterns = [
+        // Allowed: target script, Latin (checked elsewhere), and
+        // Common/Inherited (digits, punctuation, spaces, ZWJ/ZWNJ, emoji).
+        const allowed = this.rx(
+            `^[\\p{Script=${L.script}}\\p{Script=Latin}` +
+            `\\p{Script=Common}\\p{Script=Inherited}]$`,
+            "u"
+        );
 
-    // Devanagari - Hindi, Marathi, Nepali, Sanskrit
-    /[\u0900-\u097F]/g,
+        for (const ch of clean) {
 
-    // Bengali / Assamese
-    /[\u0980-\u09FF]/g,
+            if (!allowed.test(ch)) {
+                return true;
+            }
+        }
 
-    // Gurmukhi - Punjabi
-    /[\u0A00-\u0A7F]/g,
+        // Latin-script targets have no script ratio to check
+        if (L.latinAllowed) {
+            return false;
+        }
 
-    // Gujarati
-    /[\u0A80-\u0AFF]/g,
+        const targetCount =
+            this.countTarget(clean);
 
-    // Odia
-    /[\u0B00-\u0B7F]/g,
+        const latinCount =
+            (clean.match(/[A-Za-z]/g) || []).length;
 
-    // Tamil
-    /[\u0B80-\u0BFF]/g,
+        const letterCount =
+            targetCount + latinCount;
 
-    // Telugu
-    /[\u0C00-\u0C7F]/g,
+        // Very short subtitles such as "അതെ", "ഇല്ല", "OK", "FBI"
+        // should not be rejected only because they have few characters.
+        if (letterCount < 4) {
+            return false;
+        }
 
-    // Kannada
-    /[\u0C80-\u0CFF]/g,
-
-    // Sinhala
-    /[\u0D80-\u0DFF]/g,
-
-    // Thai
-    /[\u0E00-\u0E7F]/g,
-
-    // Lao
-    /[\u0E80-\u0EFF]/g,
-
-    // Tibetan
-    /[\u0F00-\u0FFF]/g,
-
-    // Myanmar
-    /[\u1000-\u109F]/g,
-
-    // Khmer
-    /[\u1780-\u17FF]/g,
-
-    // Chinese / Japanese Kanji
-    /[\u3400-\u4DBF]/g,
-    /[\u4E00-\u9FFF]/g,
-
-    // Japanese Hiragana
-    /[\u3040-\u309F]/g,
-
-    // Japanese Katakana
-    /[\u30A0-\u30FF]/g,
-
-    // Korean Hangul
-    /[\uAC00-\uD7AF]/g,
-
-    // Meitei / Manipuri
-    /[\uABC0-\uABFF]/g,
-
-    // Ol Chiki - Santali
-    /[\u1C50-\u1C7F]/g
-];
-
-    let foreignScriptCount = 0;
-
-    for (
-        const pattern of foreignScriptPatterns
-    ) {
-
-        foreignScriptCount +=
-            (
-                text.match(pattern) || []
-            ).length;
-    }
-
-    // Any meaningful amount of another
-    // Indic script means contamination.
-    if (
-        foreignScriptCount >= 1
-    ) {
-        return true;
-    }
-
-    const letterCount =
-        malayalamCount +
-        latinCount;
-
-    // Very short subtitles such as:
-    // "അതെ", "ഇല്ല", "OK", "FBI"
-    // should not be rejected only because
-    // they contain very few characters.
-    if (
-        letterCount < 4
-    ) {
-        return false;
-    }
-
-    const ratio =
-        malayalamCount /
-        letterCount;
-
-    return ratio < 0.35;
-},
+        return (targetCount / letterCount) < 0.35;
+    },
 
 
     hasBrokenTags(
@@ -669,43 +680,43 @@ validateTranslations(
 
 
     hasBrokenImportantTokens(
-    original,
-    translated
-) {
+        original,
+        translated
+    ) {
 
-    const tokens =
-        this.extractImportantTokens(
-            original
-        );
+        const tokens =
+            this.extractImportantTokens(
+                original
+            );
 
-    for (const token of tokens) {
+        for (const token of tokens) {
 
-        const normalizedToken =
-            token
-                .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
-                .trim();
+            const normalizedToken =
+                token
+                    .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
+                    .trim();
 
-        if (!normalizedToken) {
-            continue;
+            if (!normalizedToken) {
+                continue;
+            }
+
+            const normalizedTranslated =
+                translated
+                    .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
+                    .trim();
+
+            if (
+                !normalizedTranslated.includes(
+                    normalizedToken
+                )
+            ) {
+
+                return true;
+            }
         }
 
-        const normalizedTranslated =
-            translated
-                .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
-                .trim();
-
-        if (
-            !normalizedTranslated.includes(
-                normalizedToken
-            )
-        ) {
-
-            return true;
-        }
-    }
-
-    return false;
-},
+        return false;
+    },
 
 
     extractImportantTokens(
@@ -836,11 +847,24 @@ validateTranslations(
 
 
     // Local only (no API call): removes the English subtitle when
-    // Gemini copied it before or after the Malayalam, for example:
+    // Gemini copied it before or after the translation, for example:
     // "No, you don't understand. ഇല്ല, നിനക്ക് മനസ്സിലാകുന്നില്ല."
+    // Not used for Latin-script targets (can't tell English from target).
     cleanEnglishEchoes(chunk, translations) {
 
-        const malayalam = /[\u0D00-\u0D7F]/;
+        if (this.lang().latinAllowed) {
+            return translations;
+        }
+
+        const target = this.rx(
+            this.scriptSource(),
+            "u"
+        );
+
+        const targetAll = this.rx(
+            this.scriptSource(),
+            "gu"
+        );
 
         let removed = 0;
 
@@ -860,8 +884,8 @@ validateTranslations(
 
             let changed = false;
 
-            // English copied BEFORE the Malayalam
-            const first = text.search(malayalam);
+            // English copied BEFORE the translation
+            const first = text.search(target);
 
             if (first > 0) {
 
@@ -876,8 +900,8 @@ validateTranslations(
                 }
             }
 
-            // English copied AFTER the Malayalam
-            const letters = text.match(/[\u0D00-\u0D7F]/g);
+            // English copied AFTER the translation
+            const letters = text.match(targetAll);
 
             if (letters && letters.length > 0) {
 
@@ -898,7 +922,7 @@ validateTranslations(
                         this.looksLikeEcho(suffix, english)
                     ) {
 
-                        // Keep punctuation such as "?" after the Malayalam
+                        // Keep punctuation such as "?" after the translation
                         text = (
                             text.slice(0, lastIndex + 1) +
                             suffixRaw.slice(0, latinStart)
@@ -929,9 +953,9 @@ validateTranslations(
 
     // ---------------------------------------------------------
     // Last step for lines that STILL contain a wrong script (for
-    // example Korean letters inside a Malayalam word) or English after
-    // the normal recovery. Each such line is sent ALONE to Gemini:
-    // only its English sentence, with a short "translate this" prompt.
+    // example Ethiopic or Korean letters inside a word) or English
+    // after the normal recovery. Each such line is sent ALONE to
+    // Gemini: only its English sentence, with a short prompt.
     //
     // Alignment is safe: the English comes from the line's own position
     // and the answer is written back to that same position. Timestamps
@@ -951,6 +975,8 @@ validateTranslations(
         const MAX_ATTEMPTS_PER_LINE = 2;
 
         try {
+
+            const L = this.lang();
 
             const indexes = [
                 ...new Set(
@@ -988,8 +1014,12 @@ validateTranslations(
                 const breaks =
                     (english.match(/\|\|\|/g) || []).length;
 
-                const prompt = `Translate this English sentence to natural Kerala local Malayalam.
-Use Malayalam letters only. Write names and abbreviations in Malayalam letters.
+                const letterRule = L.latinAllowed
+                    ? `Use ${L.name} only.`
+                    : `Use ${L.name} letters only. Write names and abbreviations in ${L.name} letters.`;
+
+                const prompt = `Translate this English sentence to ${L.dialect}.
+${letterRule}
 Keep any <i> tags and ||| line breaks exactly as they are.
 Return only the translation, nothing else.
 
@@ -1087,7 +1117,7 @@ ${english}`;
 
 
     // A reply is accepted only if it is ONE clean translation:
-    // same number of line breaks, Malayalam only, tags unchanged.
+    // same number of line breaks, target language only, tags unchanged.
     isCleanSingleTranslation(english, text, breaks) {
 
         if (!text || !text.trim()) {
@@ -1098,7 +1128,7 @@ ${english}`;
             return false;
         }
 
-        if (!/[\u0D00-\u0D7F]/.test(text)) {
+        if (!this.hasTarget(text)) {
             return false;
         }
 
@@ -1106,12 +1136,15 @@ ${english}`;
             return false;
         }
 
-        const withoutProtected = text
-            .replace(/<[^>]*>/g, "")
-            .replace(/https?:\/\/[^\s]+/gi, "");
+        if (!this.lang().latinAllowed) {
 
-        if (/[A-Za-z]/.test(withoutProtected)) {
-            return false;
+            const withoutProtected = text
+                .replace(/<[^>]*>/g, "")
+                .replace(/https?:\/\/[^\s]+/gi, "");
+
+            if (/[A-Za-z]/.test(withoutProtected)) {
+                return false;
+            }
         }
 
         if (this.hasBrokenTags(english, text)) {
@@ -1124,8 +1157,9 @@ ${english}`;
 
     // ---------------------------------------------------------
     // English words left inside a translation.
-    // Asks Gemini ONLY for those words in Malayalam letters and
+    // Asks Gemini ONLY for those words in the target script and
     // swaps them in locally. HTML tags and URLs are never touched.
+    // Not used for Latin-script targets.
     // ---------------------------------------------------------
 
     englishWordPattern() {
@@ -1161,6 +1195,10 @@ ${english}`;
     // (those lines are re-translated fully by the normal recovery).
     wordsToFix(text) {
 
+        if (this.lang().latinAllowed) {
+            return [];
+        }
+
         if (!text || typeof text !== "string") {
             return [];
         }
@@ -1171,24 +1209,31 @@ ${english}`;
             return [];
         }
 
-        // A Latin letter stuck to a Malayalam letter (for example "pക്ഷേ")
-        // is a broken Malayalam word, not an English word. Sounding it out
+        // A Latin letter stuck to a target-script letter (for example
+        // "pക്ഷേ") is a broken word, not an English word. Sounding it out
         // would give a wrong word, so leave it for the normal re-translation.
         const withoutProtected = text
             .replace(/<[^>]*>/g, " ")
             .replace(/https?:\/\/[^\s]+/gi, " ");
 
-        if (/[A-Za-z][\u0D00-\u0D7F]|[\u0D00-\u0D7F][A-Za-z]/.test(withoutProtected)) {
+        const S = this.scriptSource();
+
+        if (
+            this.rx(
+                `[A-Za-z]${S}|${S}[A-Za-z]`,
+                "u"
+            ).test(withoutProtected)
+        ) {
             return [];
         }
 
         const latinCount =
             words.join("").replace(/[^A-Za-z]/g, "").length;
 
-        const malayalamCount =
-            (text.match(/[\u0D00-\u0D7F]/g) || []).length;
+        const targetCount =
+            this.countTarget(text);
 
-        if (words.length > 3 || latinCount > malayalamCount) {
+        if (words.length > 3 || latinCount > targetCount) {
             return [];
         }
 
@@ -1226,6 +1271,12 @@ ${english}`;
 
         try {
 
+            if (this.lang().latinAllowed) {
+                return translations;
+            }
+
+            const L = this.lang();
+
             const wanted = new Map();
 
             for (let i = 0; i < chunk.length; i++) {
@@ -1252,18 +1303,18 @@ ${english}`;
 
                 const list = [...wanted.values()];
 
-                const prompt = `${customPrompt}
+                const prompt = `${this.basePrompt(customPrompt)}
 
 NEW TASK (this overrides any output-format instruction above):
-Write each English word below in Malayalam letters, using the usual Malayalam spelling.
+Write each English word below in ${L.name} letters, using the usual ${L.name} spelling.
 - Never use English letters.
-- Never use Tamil, Hindi or any other language's words.
+- Never use any other language's words or script.
 - Names are written the way they sound.
 - Use the context sentence only to understand the word.
 
 Return ONLY one line per word, in exactly this form:
-1: Malayalam word
-2: Malayalam word
+1: ${L.name} word
+2: ${L.name} word
 
 WORDS:
 ${list.map((item, n) =>
@@ -1297,7 +1348,7 @@ ${list.map((item, n) =>
 
                     const usable =
                         value &&
-                        /[\u0D00-\u0D7F]/.test(value) &&
+                        this.hasTarget(value) &&
                         !/[A-Za-z]/.test(value) &&
                         !this.hasBadLanguage(value);
 
@@ -1548,6 +1599,8 @@ ${list.map((item, n) =>
         customPrompt
     ) {
 
+        const L = this.lang();
+
         const indexes =
             [
                 ...new Set(
@@ -1614,8 +1667,12 @@ ${next}`;
 
             }).join("\n\n");
 
+        const scriptLine = L.latinAllowed
+            ? `- Write in ${L.name} only. Do not use any non-Latin script. Never repeat the English text.`
+            : `- Write everything in ${L.name} script, including names and abbreviations. Never use English letters and never repeat the English text.
+- Do not use any other language's script or words.`;
 
-        const prompt = `${customPrompt}
+        const prompt = `${this.basePrompt(customPrompt)}
 
 A previous translation response contained one or more suspicious subtitle translations.
 
@@ -1628,18 +1685,17 @@ STRICT RULES:
 - Do not copy the translation of another subtitle.
 - Use PREVIOUS CONTEXT and NEXT CONTEXT only to understand meaning.
 - Do not translate the context as separate subtitles.
-- Use natural spoken Kerala Malayalam.
+- Use ${L.dialect}.
 - Preserve emotion, personality, slang and profanity.
-- Write everything in Malayalam script, including names and abbreviations. Never use English letters and never repeat the English text.
-- Do not use Tamil, Telugu, Kannada, Hindi or Bengali.
+${scriptLine}
 - Preserve HTML tags exactly.
 - Preserve important numbers, URLs and proper nouns.
-- Return ONLY the requested IDs and their Malayalam translations.
+- Return ONLY the requested IDs and their ${L.name} translations.
 - Do not add explanations.
 
 FORMAT:
 [[SUBTITLE_X]]
-Malayalam translation
+${L.name} translation
 
 SUBTITLES:
 ${input}`;
