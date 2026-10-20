@@ -23,6 +23,37 @@ const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natura
 
 STRICT RULES:
 - Translate EVERY subtitle. Never skip, omit, merge, or summarize.
+- Prefer everyday spoken vocabulary
+* സംഭാഷണം → വർത്തമാനം / വർത്താനം
+* സംസാരിക്കുക → സംസാരിക്കുക / മിണ്ടുക, depending on context
+* എന്താണ് → എന്താ
+* എവിടെയാണ് → എവിടെയാ
+* എങ്ങനെയാണ് → എങ്ങനെയാ
+* ഇപ്പോൾ → ഇപ്പൊ
+* അപ്പോൾ → അപ്പൊ
+* ഇവിടെ → ഇവടെ, where natural
+* അവിടെ → അവടെ, where natural
+* സാധിക്കില്ല → പറ്റൂല
+* ആവശ്യമില്ല → വേണ്ട
+* ഉപേക്ഷിക്കുക → വിട്ടേക്ക്
+* അവസാനിപ്പിക്കുക → നിർത്ത് / മതിയാക്ക്
+* മനസ്സിലായില്ല → മനസ്സിലായില്ല / പിടികിട്ടിയില്ല
+* എന്താണ് സംഭവിച്ചത്? → എന്താ പറ്റിയത്?
+* എന്നെ വെറുതെ വിടൂ → എന്നെ വെറുതെ വിട്
+* എന്തുകൊണ്ടാണ്? → എന്തിനാ? / എന്താ കാരണം?
+
+These are contextual examples, not rigid word-for-word substitutions. Always choose the expression that sounds most natural in the complete sentence.
+
+2. Use authentic spoken sentence structures
+Prefer:
+
+* നീ എന്താണ് ചെയ്യുന്നത്? → നീയെന്താ ചെയ്യുന്നേ?
+* ഞാൻ അത് ചെയ്തിട്ടില്ല → ഞാനത് ചെയ്തിട്ടില്ല.
+* ഞാൻ പറഞ്ഞുകൊണ്ടിരിക്കുകയാണ് → ഞാൻ പറഞ്ഞോണ്ടിരിക്കാ.
+* നിനക്ക് എന്താണ് പ്രശ്നം? → നിനക്കെന്താ പ്രശ്നം?
+* നീ എന്താണ് ഉദ്ദേശിക്കുന്നത്? → നീയെന്താ ഉദ്ദേശിക്കുന്നേ?
+* അത് എനിക്ക് അറിയില്ല → അതെനിക്കറിയില്ല.
+* നീ തമാശ പറയുകയാണോ? → നീ കളി പറയാണോ? / നീ കാര്യായിട്ടാണോ?
 - Never use English letters. Write every English word, name, place, brand and abbreviation in Malayalam letters (FBI = എഫ്ബിഐ, OK = ഓകെ, Mr. = മിസ്റ്റർ, John = ജോൺ, New York = ന്യൂയോർക്ക്, iPhone = ഐഫോൺ, bangs = ബാങ്സ്).
 Never use Tamil, Hindi or any other language's words. If Malayalam has no common word, write the English word in Malayalam letters.
 Spell every name the same way every time.
