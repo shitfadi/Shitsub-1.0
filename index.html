@@ -1,21 +1,32 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b0f0d">
-<meta name="description" content="ShitSub - English SRT to Natural Kerala Malayalam">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
-<title>ShitSub - SRT Translator</title>
-<link rel="stylesheet" href="css/style.css?v=18">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <meta name="theme-color" content="#0b0f0d">
+    <meta name="description" content="ShitSub - English SRT to Natural Kerala Malayalam">
+
+    <!-- PWA / iPhone Home Screen settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="ShitSub">
+
+    <!-- Website manifest and app icons -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./assets/icon-512.png">
+
+    <title>ShitSub - SRT Translator</title>
+    <link rel="stylesheet" href="./css/style.css?v=18">
 </head>
 <body>
 
-<!-- =====================================================
-     BACKGROUND VIDEO
-====================================================== -->
+<!-- BACKGROUND VIDEO -->
 <video
     id="backgroundVideo"
     class="background-video"
@@ -25,14 +36,12 @@
     playsinline
     preload="auto"
 >
-    <source src="assets/background.mp4" type="video/mp4">
+    <source src="./assets/background.mp4" type="video/mp4">
 </video>
 
 <div class="video-overlay"></div>
 
-<!-- =====================================================
-     HAMBURGER MENU
-====================================================== -->
+<!-- HAMBURGER MENU -->
 <button
     id="menuBtn"
     class="menu-btn"
@@ -59,7 +68,7 @@
         </button>
     </div>
 
-    <a class="menu-item" href="downloads/ShitSub.apk" download>
+    <a class="menu-item" href="./downloads/ShitSub.apk" download>
         <span class="menu-item-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -78,9 +87,7 @@
     </div>
 </aside>
 
-<!-- =====================================================
-     MAIN APP
-====================================================== -->
+<!-- MAIN APP -->
 <div class="app">
 
     <!-- HEADER -->
@@ -202,22 +209,23 @@
 
 </div>
 
-<!-- =====================================================
-     JAVASCRIPT
-====================================================== -->
+<!-- SERVICE WORKER -->
 <script>
-    // Save the background video on the device for instant loading
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-            navigator.serviceWorker.register("sw.js").catch(function () {});
+            navigator.serviceWorker.register("./sw.js").catch(function (error) {
+                console.error("Service worker registration failed:", error);
+            });
         });
     }
 </script>
-<script src="js/config.js?v=6"></script>
-<script src="js/srt-parser.js"></script>
-<script src="js/gemini-api.js?v=30"></script>
-<script src="js/translator.js"></script>
-<script src="js/app.js?v=10"></script>
+
+<!-- EXISTING APPLICATION SCRIPTS -->
+<script src="./js/config.js?v=6"></script>
+<script src="./js/srt-parser.js"></script>
+<script src="./js/gemini-api.js?v=30"></script>
+<script src="./js/translator.js"></script>
+<script src="./js/app.js?v=10"></script>
 
 </body>
 </html>
