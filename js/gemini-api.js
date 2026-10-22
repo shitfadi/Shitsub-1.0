@@ -223,7 +223,8 @@ ${input}`;
             !problem.startsWith("tokens:") &&
             !problem.startsWith("tags:") &&
             !problem.startsWith("latin:") &&
-            !problem.startsWith("language:")
+            !problem.startsWith("language:") &&
+            !problem.startsWith("digits:")
         );
 
         if (hardProblems.length < finalProblems.length) {
@@ -518,6 +519,18 @@ ${input}`;
             }
 
             if (
+                this.hasStrayDigits(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `digits:${i + 1}`
+                );
+            }
+
+            if (
                 this.hasBrokenTags(
                     english,
                     translated
@@ -637,6 +650,39 @@ ${input}`;
         }
 
         return (targetCount / letterCount) < 0.35;
+    },
+
+
+    // Digits stuck INSIDE a word (letter + digits + letter) that are not in
+    // the English subtitle, for example "കളി23യുണ്ട്". This is almost always
+    // a random model glitch, so it is flagged and the line is retried.
+    hasStrayDigits(english, translated) {
+
+        if (this.lang().latinAllowed) {
+            return false;
+        }
+
+        const englishDigits = new Set(
+            String(english || "").match(/\d+/g) || []
+        );
+
+        const S = this.scriptSource();
+
+        const re = this.rx(
+            `${S}(\\d+)(?=${S})`,
+            "gu"
+        );
+
+        re.lastIndex = 0;
+
+        for (const m of String(translated || "").matchAll(re)) {
+
+            if (!englishDigits.has(m[1])) {
+                return true;
+            }
+        }
+
+        return false;
     },
 
 
@@ -983,7 +1029,8 @@ ${input}`;
                     this.validateTranslations(chunk, translations)
                         .filter(problem =>
                             problem.startsWith("language:") ||
-                            problem.startsWith("latin:")
+                            problem.startsWith("latin:") ||
+                            problem.startsWith("digits:")
                         )
                         .map(problem =>
                             parseInt(problem.split(":")[1], 10)
@@ -1133,6 +1180,10 @@ ${english}`;
         }
 
         if (this.hasBadLanguage(text)) {
+            return false;
+        }
+
+        if (this.hasStrayDigits(english, text)) {
             return false;
         }
 
