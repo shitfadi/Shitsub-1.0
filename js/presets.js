@@ -192,7 +192,7 @@ Return ONLY the translations in the required output format.`
 
         label: "Family Friendly",
 
-        hint: "Street-style colloquial Malayalam with no bad words and nothing vulgar.",
+        hint: "Street style colloquial Malayalam with no bad words and nothing vulgar.",
 
         prompt: PRESET_BASE_PROMPT + `
 
