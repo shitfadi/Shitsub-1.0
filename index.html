@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,6 +22,7 @@
 
     <title>ShitSub - SRT Translator</title>
     <link rel="stylesheet" href="./css/style.css?v=18">
+    <link rel="stylesheet" href="./css/presets.css?v=1">
 </head>
 <body>
 
@@ -138,19 +138,42 @@
         <div id="fileName" class="prompt-info">No file selected.</div>
     </section>
 
+    <!-- TRANSLATION STYLE -->
+    <section id="styleCard" class="card style-card">
+        <div class="section-title">Translation Style</div>
+
+        <div class="preset-group" role="radiogroup" aria-label="Translation style">
+            <button type="button" class="preset-btn" data-preset="adult" role="radio" aria-checked="true">
+                <span class="preset-name">18+</span>
+                <span class="preset-sub">Raw &amp; vulgar</span>
+            </button>
+
+            <button type="button" class="preset-btn" data-preset="family" role="radio" aria-checked="false">
+                <span class="preset-name">Family Friendly</span>
+                <span class="preset-sub">Clean &amp; non-vulgar</span>
+            </button>
+        </div>
+
+        <div id="presetHint" class="preset-hint"></div>
+    </section>
+
     <!-- CUSTOM PROMPT -->
     <section class="card">
         <div class="section-title">Custom Prompt</div>
+
+        <div class="prompt-info prompt-intro">
+            Optional. Your own instructions are added on top of the selected style.
+        </div>
 
         <button id="editPromptBtn" type="button" class="secondary-btn">
             Edit Prompt
         </button>
 
         <div id="promptEditor" class="prompt-editor">
-            <label for="customPrompt">Translation Prompt</label>
+            <label for="customPrompt">Your Extra Instructions</label>
             <textarea
                 id="customPrompt"
-                placeholder="Enter your custom subtitle translation instructions..."
+                placeholder="Optional: add your own instructions, for example character names and their Malayalam spelling..."
             ></textarea>
 
             <button id="savePromptBtn" type="button" class="save-btn">
@@ -225,7 +248,8 @@
 <script src="./js/srt-parser.js"></script>
 <script src="./js/gemini-api.js?v=31"></script>
 <script src="./js/translator.js"></script>
-<script src="./js/app.js?v=10"></script>
+<script src="./js/presets.js?v=1"></script>
+<script src="./js/app.js?v=11"></script>
 
 </body>
 </html>
