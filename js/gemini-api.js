@@ -124,7 +124,7 @@ STRICT RULES:
 - Do not add explanations.
 - Return ONLY subtitle IDs, SRC lines and MAL translations.
 - Use ${L.dialect}.
-- Preserve the character's personality, emotion, tone, slang and profanity.
+- Preserve the character's personality, emotion, tone and slang.
 - Do not unnecessarily make casual dialogue formal.
 ${this.scriptRules()}
 - Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
@@ -1069,9 +1069,13 @@ ${input}`;
 ${letterRule}
 Keep any <i> tags and ||| line breaks exactly as they are.
 Return only the translation, nothing else.
+Follow the tone and word rules in the STYLE NOTES below; ignore any output-format instruction in them.
 
 SENTENCE:
-${english}`;
+${english}
+
+STYLE NOTES:
+${this.basePrompt(customPrompt)}`;
 
                 let fixed = null;
 
@@ -1737,7 +1741,7 @@ STRICT RULES:
 - Use PREVIOUS CONTEXT and NEXT CONTEXT only to understand meaning.
 - Do not translate the context as separate subtitles.
 - Use ${L.dialect}.
-- Preserve emotion, personality, slang and profanity.
+- Preserve emotion, personality and slang.
 ${scriptLine}
 - Preserve HTML tags exactly.
 - Preserve important numbers, URLs and proper nouns.

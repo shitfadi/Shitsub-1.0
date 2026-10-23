@@ -19,6 +19,10 @@ const savePromptBtn = document.getElementById("savePromptBtn");
 const promptEditor = document.getElementById("promptEditor");
 const customPrompt = document.getElementById("customPrompt");
 
+const styleCard = document.getElementById("styleCard");
+const presetButtons = document.querySelectorAll(".preset-btn");
+const presetHint = document.getElementById("presetHint");
+
 const translateBtn = document.getElementById("translateBtn");
 const mainError = document.getElementById("mainError");
 
@@ -43,6 +47,9 @@ const menuCloseBtn = document.getElementById("menuCloseBtn");
 
 let outputText = "";
 let outputName = "";
+
+// Selected translation style (for example 18+ or Family Friendly)
+let selectedPreset = DEFAULT_PRESET;
 
 // =========================================================
 // INITIALIZATION
@@ -84,11 +91,13 @@ function init() {
 function loadSavedSettings() {
     loadSavedApiKey();
 
-    const savedPrompt = localStorage.getItem(
-        CONFIG.STORAGE_KEYS.CUSTOM_PROMPT
-    );
+    // The Custom Prompt box holds only the user's EXTRA instructions.
+    // They are saved per language under their own key (getCustomPromptKey),
+    // so an old saved full prompt can never fight with the selected style.
+    customPrompt.value =
+        localStorage.getItem(getCustomPromptKey()) || "";
 
-    customPrompt.value = savedPrompt || DEFAULT_PROMPT;
+    setupStylePresets();
 }
 
 // =========================================================
@@ -165,6 +174,13 @@ function setupEventListeners() {
     downloadBtn.addEventListener("click", handleDownload);
     document.addEventListener("keydown", handleKeyboardNavigation);
 
+    // Style presets
+    presetButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            selectPreset(button.dataset.preset, true);
+        });
+    });
+
     // Hamburger menu
     menuBtn.addEventListener("click", toggleMenu);
     menuCloseBtn.addEventListener("click", closeMenu);
@@ -213,6 +229,68 @@ function toggleMenu() {
 }
 
 // =========================================================
+// STYLE PRESETS (18+ / Family Friendly)
+// =========================================================
+
+function setupStylePresets() {
+
+    const presets = getStylePresets();
+
+    // A language without presets simply hides the style card
+    if (!presets) {
+
+        selectedPreset = null;
+
+        if (styleCard) {
+            styleCard.style.display = "none";
+        }
+
+        return;
+    }
+
+    if (styleCard) {
+        styleCard.style.display = "";
+    }
+
+    const saved = localStorage.getItem(getPresetStorageKey());
+
+    selectPreset(
+        presets[saved] ? saved : DEFAULT_PRESET,
+        false
+    );
+}
+
+function selectPreset(presetId, save) {
+
+    const presets = getStylePresets();
+
+    if (!presets) {
+        return;
+    }
+
+    if (!presets[presetId]) {
+        presetId = DEFAULT_PRESET;
+    }
+
+    selectedPreset = presetId;
+
+    presetButtons.forEach((button) => {
+        const active = button.dataset.preset === presetId;
+
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-checked", active ? "true" : "false");
+    });
+
+    if (presetHint) {
+        presetHint.textContent = presets[presetId].hint;
+    }
+
+    if (save) {
+        localStorage.setItem(getPresetStorageKey(), presetId);
+    }
+}
+
+// =========================================================
 // FILE SELECTION
 // =========================================================
 
@@ -238,14 +316,10 @@ function handleEditPrompt() {
 }
 
 function handleSavePrompt() {
-    const prompt = customPrompt.value.trim();
-
-    if (!prompt) {
-        customPrompt.value = DEFAULT_PROMPT;
-    }
+    customPrompt.value = customPrompt.value.trim();
 
     localStorage.setItem(
-        CONFIG.STORAGE_KEYS.CUSTOM_PROMPT,
+        getCustomPromptKey(),
         customPrompt.value
     );
 
@@ -323,16 +397,11 @@ async function handleTranslate() {
         return;
     }
 
-    const prompt = customPrompt.value.trim();
-
-    if (!prompt) {
-        customPrompt.value = DEFAULT_PROMPT;
-
-        localStorage.setItem(
-            CONFIG.STORAGE_KEYS.CUSTOM_PROMPT,
-            DEFAULT_PROMPT
-        );
-    }
+    // Selected style + the user's own extra instructions
+    const finalPrompt = buildFinalPrompt(
+        selectedPreset,
+        customPrompt.value
+    );
 
     // Disable button while translating
     translateBtn.disabled = true;
@@ -363,7 +432,7 @@ async function handleTranslate() {
         const result = await Translator.translateFile(
             file,
             apiKey,
-            customPrompt.value,
+            finalPrompt,
             (percent, total, message) => {
                 const safePercent = Math.max(
                     0,
