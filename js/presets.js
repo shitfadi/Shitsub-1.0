@@ -298,6 +298,15 @@ Intensity rules
 * Do not add extra jokes, insults, explanations, or emotional details that are absent from the original.
 
 Return ONLY the Malayalam translations in the required output format.`
+    },
+
+    none: {
+
+        label: "None",
+
+        hint: "Base street style Malayalam only. No bad word list and no clean up rules. Your Custom Prompt is added on top.",
+
+        prompt: PRESET_BASE_PROMPT
     }
 };
 
