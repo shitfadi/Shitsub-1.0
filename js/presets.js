@@ -304,7 +304,7 @@ Return ONLY the Malayalam translations in the required output format.`
 
         label: "None",
 
-        hint: "Base street style Malayalam only. No bad word list and no clean up rules. Your Custom Prompt is added on top.",
+        hint: "Keeps bad words exactly as the original dialogue has them. Nothing added, nothing removed. Your Custom Prompt is added on top.",
 
         prompt: PRESET_BASE_PROMPT
     }
