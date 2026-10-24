@@ -88,3 +88,9 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* None button: full width under the two main buttons */
+.preset-wide {
+    grid-column: 1 / -1;
+    min-height: 52px;
+}
