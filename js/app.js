@@ -426,6 +426,13 @@ async function handleTranslate() {
 
     statusCard.style.display = "block";
 
+    // Show waiting and resume notes from the Gemini code in the activity line
+    GeminiAPI.onStatus = (text) => {
+        if (activityText) {
+            activityText.textContent = text;
+        }
+    };
+
     try {
         const file = srtFile.files[0];
 
@@ -544,6 +551,7 @@ async function handleTranslate() {
         }
     }
     finally {
+        GeminiAPI.onStatus = null;
         translateBtn.disabled = false;
         translateBtn.textContent = "Translate SRT";
     }

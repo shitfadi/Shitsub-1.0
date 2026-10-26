@@ -9,6 +9,9 @@ const GeminiAPI = {
     // Target-language spellings of English words, remembered for the whole file
     wordCache: {},
 
+    // The page can set this to show short notes (waiting, resuming)
+    onStatus: null,
+
     // Cache of built regexes (cheap speed-up)
     _rxCache: {},
 
@@ -251,12 +254,58 @@ ${input}`;
     },
 
 
+    // Sends one request to Gemini. If Gemini does not answer in time the
+    // request is cancelled, so the normal retry logic can try again.
+    // Time limit: CONFIG.REQUEST_TIMEOUT (milliseconds), default 2 minutes.
     async callGemini(prompt, apiKey) {
+
+        const timeoutMs = CONFIG.REQUEST_TIMEOUT || 120000;
+
+        const controller = new AbortController();
+
+        const timer = setTimeout(
+            () => controller.abort(),
+            timeoutMs
+        );
+
+        try {
+
+            return await this.sendToGemini(
+                prompt,
+                apiKey,
+                controller.signal
+            );
+
+        } catch (error) {
+
+            if (error && error.name === "AbortError") {
+
+                const timeoutError = new Error(
+                    `Gemini did not answer within ${Math.round(timeoutMs / 1000)} seconds`
+                );
+
+                timeoutError.timedOut = true;
+
+                throw timeoutError;
+            }
+
+            throw error;
+
+        } finally {
+
+            clearTimeout(timer);
+        }
+    },
+
+
+    async sendToGemini(prompt, apiKey, signal) {
 
         const response = await fetch(
             `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
             {
                 method: "POST",
+
+                signal: signal,
 
                 headers: {
                     "Content-Type": "application/json"
@@ -1887,6 +1936,162 @@ ${input}`;
     },
 
 
+    // ---------------------------------------------------------
+    // Saved progress
+    // Every finished chunk is kept on the device. If the page closes or
+    // the translation stops, uploading the same file again (with the same
+    // style and prompt) continues from the saved chunks.
+    // ---------------------------------------------------------
+
+    RESUME_KEY: "shitsub_resume",
+
+    RESUME_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+
+
+    notify(text) {
+
+        try {
+
+            if (typeof this.onStatus === "function") {
+                this.onStatus(text);
+            }
+
+        } catch (error) {
+            // A note must never stop the translation
+        }
+    },
+
+
+    hashText(text) {
+
+        let h1 = 0x811c9dc5;
+        let h2 = 5381;
+
+        for (let i = 0; i < text.length; i++) {
+
+            const c = text.charCodeAt(i);
+
+            h1 ^= c;
+            h1 = Math.imul(h1, 16777619);
+
+            h2 = (Math.imul(h2, 33) + c) | 0;
+        }
+
+        return (
+            (h1 >>> 0).toString(16) +
+            (h2 >>> 0).toString(16) +
+            text.length.toString(16)
+        );
+    },
+
+
+    // Same file + same style/prompt + same settings = same key
+    makeJobKey(chunks, customPrompt) {
+
+        const body = chunks
+            .map(chunk => chunk.map(s => s.text).join("\u0001"))
+            .join("\u0002");
+
+        return this.hashText(
+            [
+                CONFIG.TARGET_LANGUAGE,
+                CONFIG.MODEL,
+                chunks.length,
+                String(customPrompt || "")
+            ].join("\u0003") + "\u0004" + body
+        );
+    },
+
+
+    readResume() {
+
+        try {
+
+            const raw = localStorage.getItem(this.RESUME_KEY);
+
+            return raw ? JSON.parse(raw) : null;
+
+        } catch (error) {
+
+            return null;
+        }
+    },
+
+
+    loadSavedChunks(jobKey, chunks) {
+
+        const found = {};
+
+        const data = this.readResume();
+
+        if (!data || data.key !== jobKey || !data.chunks) {
+            return found;
+        }
+
+        if (
+            !data.savedAt ||
+            Date.now() - data.savedAt > this.RESUME_MAX_AGE_MS
+        ) {
+            return found;
+        }
+
+        chunks.forEach((chunk, i) => {
+
+            const texts = data.chunks[String(i)];
+
+            if (
+                Array.isArray(texts) &&
+                texts.length === chunk.length &&
+                texts.every(t => typeof t === "string" && t.trim())
+            ) {
+                found[i] = texts;
+            }
+        });
+
+        return found;
+    },
+
+
+    saveChunk(jobKey, chunkIndex, translatedChunk) {
+
+        try {
+
+            let data = this.readResume();
+
+            if (!data || data.key !== jobKey || !data.chunks) {
+                data = { key: jobKey, chunks: {} };
+            }
+
+            data.savedAt = Date.now();
+
+            data.chunks[String(chunkIndex)] =
+                translatedChunk.map(subtitle => subtitle.text);
+
+            localStorage.setItem(
+                this.RESUME_KEY,
+                JSON.stringify(data)
+            );
+
+        } catch (error) {
+
+            // Full or blocked storage: the translation simply continues
+            console.warn("Could not save progress:", error);
+        }
+    },
+
+
+    clearSavedChunks() {
+
+        try {
+
+            localStorage.removeItem(this.RESUME_KEY);
+
+        } catch (error) {
+            // Nothing to do
+        }
+    },
+
+
     async translateWithThrottling(
         chunks,
         apiKey,
@@ -1902,28 +2107,75 @@ ${input}`;
         const maxParallel =
             CONFIG.MAX_PARALLEL || 1;
 
+        // Chunks finished in an earlier run of this same file and style
+        const jobKey =
+            this.makeJobKey(chunks, customPrompt);
+
+        const saved =
+            this.loadSavedChunks(jobKey, chunks);
+
+        const pending = [];
+
+        chunks.forEach((chunk, i) => {
+
+            if (saved[i]) {
+
+                results[i] = chunk.map(
+                    (subtitle, n) => ({
+                        ...subtitle,
+                        text: saved[i][n]
+                    })
+                );
+
+                completed++;
+            }
+            else {
+
+                pending.push(i);
+            }
+        });
+
+        if (completed > 0) {
+
+            const note =
+                `Continuing from saved progress ` +
+                `(${completed} of ${chunks.length} parts already done)`;
+
+            console.log(note);
+
+            this.notify(note);
+
+            if (onProgress) {
+
+                onProgress(
+                    completed,
+                    chunks.length
+                );
+            }
+        }
+
         for (
             let start = 0;
-            start < chunks.length;
+            start < pending.length;
             start += maxParallel
         ) {
 
-            const currentChunks =
-                chunks.slice(
+            const group =
+                pending.slice(
                     start,
                     start + maxParallel
                 );
 
             const translated =
                 await Promise.all(
-                    currentChunks.map(
-                        async (
-                            chunk,
-                            index
-                        ) => {
+                    group.map(
+                        async (chunkIndex) => {
+
+                            const chunk =
+                                chunks[chunkIndex];
 
                             const chunkNumber =
-                                start + index + 1;
+                                chunkIndex + 1;
 
                             let lastError;
 
@@ -1935,11 +2187,21 @@ ${input}`;
 
                                 try {
 
-                                    return await this.translateChunk(
-                                        chunk,
-                                        apiKey,
-                                        customPrompt
+                                    const done =
+                                        await this.translateChunk(
+                                            chunk,
+                                            apiKey,
+                                            customPrompt
+                                        );
+
+                                    // Keep it on the device right away
+                                    this.saveChunk(
+                                        jobKey,
+                                        chunkIndex,
+                                        done
                                     );
+
+                                    return done;
 
                                 } catch (error) {
 
@@ -1988,6 +2250,14 @@ ${input}`;
                                             CONFIG.MAX_RETRY_DELAY
                                         );
 
+                                    this.notify(
+                                        error.timedOut
+                                            ? `Gemini is slow, retrying ` +
+                                              `(attempt ${attempt + 1} of ${CONFIG.MAX_RETRIES})`
+                                            : `Waiting ${Math.ceil(delay / 1000)}s before trying again ` +
+                                              `(attempt ${attempt + 1} of ${CONFIG.MAX_RETRIES})`
+                                    );
+
                                     console.log(
                                         `Waiting ` +
                                         `${Math.ceil(delay / 1000)}s ` +
@@ -2011,11 +2281,11 @@ ${input}`;
                 );
 
             translated.forEach(
-                (chunk, index) => {
+                (chunkResult, i) => {
 
                     results[
-                        start + index
-                    ] = chunk;
+                        group[i]
+                    ] = chunkResult;
                 }
             );
 
@@ -2032,7 +2302,7 @@ ${input}`;
 
             if (
                 start + maxParallel <
-                chunks.length
+                pending.length
             ) {
 
                 await this.sleep(
@@ -2040,6 +2310,9 @@ ${input}`;
                 );
             }
         }
+
+        // Everything is done: the saved copy is no longer needed
+        this.clearSavedChunks();
 
         return results;
     },
