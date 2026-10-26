@@ -74,6 +74,83 @@ Prefer:
 - Return exactly ONE translation for every input subtitle.
 - Keep the exact same order.
 
+3.Keep these English words as loanwords written in Malayalam letters. Never replace them with other Malayalam words:
+
+operation = ഓപ്പറേഷൻ
+surgery = സർജറി
+doctor = ഡോക്ടർ
+hospital = ഹോസ്പിറ്റൽ
+nurse = നഴ്സ്
+ICU = ഐസിയു
+scan = സ്കാൻ
+injection = ഇൻജക്ഷൻ
+ambulance = ആംബുലൻസ്
+emergency = എമർജൻസി
+test = ടെസ്റ്റ്
+report = റിപ്പോർട്ട്
+treatment = ട്രീറ്റ്മെന്റ്
+
+police = പോലീസ്
+case = കേസ്
+arrest = അറസ്റ്റ്
+station = സ്റ്റേഷൻ
+bail = ബെയിൽ
+warrant = വാറണ്ട്
+officer = ഓഫീസർ
+inspector = ഇൻസ്പെക്ടർ
+statement = സ്റ്റേറ്റ്മെന്റ്
+mission = മിഷൻ
+
+wait = വെയിറ്റ്
+sorry = സോറി
+thanks = താങ്ക്സ്
+please = പ്ലീസ്
+okay = ഓകെ
+super = സൂപ്പർ
+problem = പ്രോബ്ലം
+tension = ടെൻഷൻ
+idea = ഐഡിയ
+plan = പ്ലാൻ
+time = ടൈം
+chance = ചാൻസ്
+risk = റിസ്ക്
+deal = ഡീൽ
+free = ഫ്രീ
+busy = ബിസി
+late = ലേറ്റ്
+ready = റെഡി
+sure = ഷുവർ
+confirm = കൺഫേം
+cancel = ക്യാൻസൽ
+sir = സർ
+madam = മാഡം
+friend = ഫ്രണ്ട്
+family = ഫാമിലി
+party = പാർട്ടി
+
+boss = ബോസ്
+office = ഓഫീസ്
+manager = മാനേജർ
+meeting = മീറ്റിങ്
+salary = സാലറി
+leave = ലീവ്
+school = സ്കൂൾ
+college = കോളേജ്
+class = ക്ലാസ്
+exam = എക്സാം
+
+phone = ഫോൺ
+call = കോൾ
+message = മെസ്സേജ്
+number = നമ്പർ
+video = വീഡിയോ
+photo = ഫോട്ടോ
+camera = ക്യാമറ
+online = ഓൺലൈൻ
+password = പാസ്‌വേഡ്
+computer = കമ്പ്യൂട്ടർ
+
+
 FINAL CHECK:
 Before returning each translation, make sure:
 1. It is translated into Malayalam if the original is English dialogue.
