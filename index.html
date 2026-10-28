@@ -22,7 +22,7 @@
 
     <title>ShitSub - SRT Translator</title>
     <link rel="stylesheet" href="./css/style.css?v=18">
-    <link rel="stylesheet" href="./css/presets.css?v=2">
+    <link rel="stylesheet" href="./css/presets.css?v=3">
 </head>
 <body>
 
@@ -85,6 +85,20 @@
         For Android phones only. After downloading, open the file and allow
         "Install unknown apps" if your phone asks.
     </div>
+
+    <button id="reloadBtn" class="menu-item menu-item-button" type="button">
+        <span class="menu-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+                <path d="M20 4v5h-5"/>
+            </svg>
+        </span>
+        <span class="menu-item-text">
+            <span class="menu-item-title">Reload App</span>
+            <span class="menu-item-sub">Fresh start. Your settings are kept.</span>
+        </span>
+    </button>
 </aside>
 
 <!-- MAIN APP -->
@@ -226,6 +240,10 @@
         <button id="downloadBtn" type="button" class="secondary-btn download-btn">
             Download Malayalam SRT
         </button>
+
+        <button id="newFileBtn" type="button" class="secondary-btn new-file-btn">
+            Translate Another File
+        </button>
     </section>
 
     <!-- FOOTER -->
@@ -249,12 +267,12 @@
 </script>
 
 <!-- EXISTING APPLICATION SCRIPTS -->
-<script src="./js/config.js?v=7"></script>
+<script src="./js/config.js?v=6"></script>
 <script src="./js/srt-parser.js"></script>
 <script src="./js/gemini-api.js?v=32"></script>
 <script src="./js/translator.js"></script>
-<script src="./js/presets.js?v=3"></script>
-<script src="./js/app.js?v=12"></script>
+<script src="./js/presets.js?v=2"></script>
+<script src="./js/app.js?v=13"></script>
 
 </body>
 </html>
