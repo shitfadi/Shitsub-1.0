@@ -3,6 +3,38 @@
 ========================================================= */
 
 // =========================================================
+// STALE PAGE GUARD
+// If an old cached index.html is paired with these newer scripts, the page
+// would be dead (no button works). Reload once with a fresh address so the
+// browser fetches the current page. Never loops.
+// =========================================================
+
+(function () {
+    const outOfDate =
+        typeof DEFAULT_PRESET === "undefined" ||
+        !document.getElementById("styleCard");
+
+    if (!outOfDate) {
+        return;
+    }
+
+    try {
+        if (sessionStorage.getItem("shitsubStaleReload")) {
+            return;
+        }
+
+        sessionStorage.setItem("shitsubStaleReload", "1");
+    }
+    catch (e) {
+        return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("r", String(Date.now()));
+    window.location.replace(url.toString());
+})();
+
+// =========================================================
 // DOM ELEMENTS
 // =========================================================
 
@@ -84,6 +116,15 @@ function init() {
     if (progressPercent) {
         progressPercent.textContent = "0%";
     }
+
+    // The Android APK link and its note are useless on iPhone / iPad
+    if (isIOS()) {
+        document
+            .querySelectorAll('.menu-item[href$=".apk"], .menu-note')
+            .forEach((el) => {
+                el.style.display = "none";
+            });
+    }
 }
 
 // =========================================================
@@ -123,6 +164,36 @@ function loadSavedApiKey() {
         saveApiKeyBtn.style.display = "block";
         editApiKeyBtn.style.display = "none";
         apiKeyStatus.textContent = "";
+    }
+}
+
+// Reads the key from the field, or from storage when iOS has blanked the
+// field while the key is still saved.
+function getApiKey() {
+    const typed = apiKeyInput.value.trim();
+
+    if (typed) {
+        return typed;
+    }
+
+    return (
+        localStorage.getItem(CONFIG.STORAGE_KEYS.API_KEY) || ""
+    ).trim();
+}
+
+// Puts the saved key back in the field if iOS blanked or changed it.
+// Does nothing while the person is typing a new key (field enabled).
+function syncSavedApiKey() {
+    const saved = localStorage.getItem(
+        CONFIG.STORAGE_KEYS.API_KEY
+    );
+
+    if (
+        saved &&
+        apiKeyInput.disabled &&
+        apiKeyInput.value !== saved
+    ) {
+        loadSavedApiKey();
     }
 }
 
@@ -176,6 +247,16 @@ function setupEventListeners() {
     downloadBtn.addEventListener("click", handleDownload);
     newFileBtn.addEventListener("click", handleNewFile);
     document.addEventListener("keydown", handleKeyboardNavigation);
+
+    // iOS can blank the saved key field when the app is restored or
+    // comes back from the share sheet. Put it back.
+    window.addEventListener("pageshow", syncSavedApiKey);
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            syncSavedApiKey();
+        }
+    });
 
     // Style presets
     presetButtons.forEach((button) => {
@@ -349,6 +430,9 @@ function handleNewFile() {
     statusText.textContent = "Getting your subtitles ready...";
     activityText.textContent = "Reading subtitles...";
 
+    // Make sure the saved API key is still shown after starting over
+    syncSavedApiKey();
+
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -430,7 +514,10 @@ async function handleTranslate() {
     mainError.textContent = "";
     resultCard.style.display = "none";
 
-    const apiKey = apiKeyInput.value.trim();
+    // Put the saved key back first if iOS blanked the field
+    syncSavedApiKey();
+
+    const apiKey = getApiKey();
 
     if (!apiKey) {
         showError("Please enter your Gemini API key.");
@@ -608,6 +695,73 @@ async function handleTranslate() {
 // DOWNLOAD
 // =========================================================
 
+function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+// Opens the iOS share sheet (Save to Files, Open in VLC...).
+// A normal download link makes iOS replace the app with a file viewer,
+// and the page can come back broken after "Done". The share sheet does not.
+// Returns "shared", "cancelled" (person closed the sheet) or false (unsupported).
+async function shareSrtFile(textWithBom) {
+    try {
+        const file = new File(
+            [textWithBom],
+            outputName,
+            { type: "text/plain" }
+        );
+
+        if (!navigator.canShare || !navigator.canShare({ files: [file] })) {
+            return false;
+        }
+
+        await navigator.share({ files: [file] });
+
+        return "shared";
+    }
+    catch (error) {
+        // Closing the share sheet is not an error. Do not download again.
+        if (error && error.name === "AbortError") {
+            return "cancelled";
+        }
+
+        console.warn("Share failed:", error);
+
+        return false;
+    }
+}
+
+function browserDownload(textWithBom) {
+    try {
+        const blob = new Blob(
+            [textWithBom],
+            { type: "application/x-subrip;charset=utf-8" }
+        );
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = outputName;
+        a.style.display = "none";
+
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+        showDownloadNote();
+    }
+    catch (error) {
+        console.error(error);
+        showError("Could not download the SRT file.");
+    }
+}
+
 function handleDownload() {
     if (!outputText) {
         return;
@@ -650,34 +804,22 @@ function handleDownload() {
         }
     }
 
-    // Standard browser download
-    try {
-        const blob = new Blob(
-            [textWithBom],
-            { type: "application/x-subrip;charset=utf-8" }
-        );
+    // iPhone / iPad: share sheet, so the page is never replaced
+    if (isIOS()) {
+        shareSrtFile(textWithBom).then((result) => {
+            if (result === "shared") {
+                showDownloadNote();
+            }
+            else if (result === false) {
+                browserDownload(textWithBom);
+            }
+        });
 
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-
-        a.href = url;
-        a.download = outputName;
-        a.style.display = "none";
-
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        setTimeout(() => {
-            URL.revokeObjectURL(url);
-        }, 1000);
-
-        showDownloadNote();
+        return;
     }
-    catch (error) {
-        console.error(error);
-        showError("Could not download the SRT file.");
-    }
+
+    // Normal browsers
+    browserDownload(textWithBom);
 }
 
 // =========================================================
