@@ -94,3 +94,30 @@
     grid-column: 1 / -1;
     min-height: 52px;
 }
+
+/* =========================================================
+   MENU RELOAD ITEM + TRANSLATE ANOTHER FILE BUTTON
+========================================================= */
+
+/* The Reload item is a button, so it needs a few resets to look like the
+   Download App card above it */
+.menu-item-button {
+    width: 100%;
+    margin-top: 18px;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* Quieter than the Download button, so Download stays the main action */
+.new-file-btn {
+    display: block;
+    margin-top: 10px;
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: none;
+}
+
+.new-file-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
