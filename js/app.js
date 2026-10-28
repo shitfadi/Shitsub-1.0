@@ -35,11 +35,13 @@ const activityText = document.getElementById("activityText");
 const resultCard = document.getElementById("resultCard");
 const resultInfo = document.getElementById("resultInfo");
 const downloadBtn = document.getElementById("downloadBtn");
+const newFileBtn = document.getElementById("newFileBtn");
 
 const menuBtn = document.getElementById("menuBtn");
 const menuBackdrop = document.getElementById("menuBackdrop");
 const sideMenu = document.getElementById("sideMenu");
 const menuCloseBtn = document.getElementById("menuCloseBtn");
+const reloadBtn = document.getElementById("reloadBtn");
 
 // =========================================================
 // STATE
@@ -172,6 +174,7 @@ function setupEventListeners() {
     savePromptBtn.addEventListener("click", handleSavePrompt);
     translateBtn.addEventListener("click", handleTranslate);
     downloadBtn.addEventListener("click", handleDownload);
+    newFileBtn.addEventListener("click", handleNewFile);
     document.addEventListener("keydown", handleKeyboardNavigation);
 
     // Style presets
@@ -184,6 +187,7 @@ function setupEventListeners() {
     // Hamburger menu
     menuBtn.addEventListener("click", toggleMenu);
     menuCloseBtn.addEventListener("click", closeMenu);
+    reloadBtn.addEventListener("click", handleReload);
     menuBackdrop.addEventListener("click", closeMenu);
 
     sideMenu.querySelectorAll(".menu-item").forEach((item) => {
@@ -226,6 +230,20 @@ function toggleMenu() {
     else {
         openMenu();
     }
+}
+
+// Reloads the page for a fresh start. The API key, style choice and saved
+// prompt live in localStorage, so they are kept, and finished translation
+// parts are kept too (saved progress). The changing ?r= value makes the
+// browser fetch the page again instead of reusing an old copy.
+function handleReload() {
+    closeMenu();
+
+    setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("r", String(Date.now()));
+        window.location.replace(url.toString());
+    }, 150);
 }
 
 // =========================================================
@@ -303,6 +321,35 @@ function handleFileSelection() {
         fileName.textContent = "No file selected.";
         fileName.style.color = "var(--muted)";
     }
+}
+
+// =========================================================
+// START ANOTHER TRANSLATION
+// =========================================================
+
+function handleNewFile() {
+    if (Translator.isTranslating) {
+        return;
+    }
+
+    outputText = "";
+    outputName = "";
+
+    // Clearing the value also lets the same file be picked again
+    srtFile.value = "";
+    handleFileSelection();
+
+    mainError.textContent = "";
+    resultInfo.innerHTML = "";
+    resultCard.style.display = "none";
+    statusCard.style.display = "none";
+
+    progressBar.style.width = "0%";
+    progressPercent.textContent = "0%";
+    statusText.textContent = "Getting your subtitles ready...";
+    activityText.textContent = "Reading subtitles...";
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // =========================================================
