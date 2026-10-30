@@ -125,6 +125,14 @@ function init() {
                 el.style.display = "none";
             });
     }
+
+    // iPhone / iPad: show how to add the site to the Home Screen,
+    // unless it is already running from the Home Screen
+    const iosInstallCard = document.getElementById("iosInstallCard");
+
+    if (iosInstallCard) {
+        iosInstallCard.hidden = !(isIOS() && !isStandalone());
+    }
 }
 
 // =========================================================
@@ -698,6 +706,15 @@ async function handleTranslate() {
 function isIOS() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+// True when the site was opened from the Home Screen (installed web app)
+function isStandalone() {
+    return window.navigator.standalone === true ||
+        (
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(display-mode: standalone)").matches
+        );
 }
 
 // Opens the iOS share sheet (Save to Files, Open in VLC...).
