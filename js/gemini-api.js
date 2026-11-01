@@ -93,7 +93,7 @@ const GeminiAPI = {
     },
 
 
-    async translateChunk(chunk, apiKey, customPrompt) {
+    async translateChunk(chunk, apiKey, customPrompt, options) {
 
         const L = this.lang();
 
@@ -167,6 +167,18 @@ ${input}`;
             chunk,
             translations
         );
+
+        // Find a stretch of lines whose translations sit one slot off and
+        // translate just that stretch again in small pieces. Costs no request
+        // when nothing is shifted. The small pieces skip this check.
+        if (!(options && options.noShiftCheck)) {
+            await this.fixShiftedRegions(
+                chunk,
+                translations,
+                apiKey,
+                customPrompt
+            );
+        }
 
         // Replace leftover English words with target-language spellings
         // (one small call per chunk, cached for the whole file)
@@ -1494,6 +1506,362 @@ ${list.map((item, n) =>
             // Normal validation and recovery still run afterwards.
             console.warn(
                 "English word fix skipped:",
+                error
+            );
+        }
+
+        return translations;
+    },
+
+
+    // ---------------------------------------------------------
+    // SHIFT DETECTOR (costs no request)
+    //
+    // Sometimes Gemini puts every translation one slot too late (or too
+    // early) for a whole stretch of lines. Each line still looks fine on
+    // its own, so the per line checks cannot see it. This compares each
+    // window of lines with its neighbouring slots, using things that
+    // survive translation: the length pattern, ? and ! marks, line breaks
+    // and dialogue dashes.
+    //
+    // Tuned on a real episode: it found the one real slip (90 lines) with
+    // no false alarm, and it finds injected shifts of 25 lines or more
+    // almost every time. Very short shifts (under about 14 lines) are
+    // ignored on purpose, because short windows give false alarms.
+    // ---------------------------------------------------------
+
+    shiftFeatures(text) {
+
+        const plain = String(text || "").replace(/<[^>]*>/g, "");
+
+        return {
+            length: plain
+                .replace(/\|\|\|/g, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .length,
+            question: plain.includes("?"),
+            exclaim: plain.includes("!"),
+            breaks: (plain.match(/\|\|\|/g) || []).length,
+            dash: /^\s*-/.test(plain)
+        };
+    },
+
+
+    pearson(a, b) {
+
+        const n = a.length;
+
+        if (n < 3) {
+            return 0;
+        }
+
+        const meanA = a.reduce((x, y) => x + y, 0) / n;
+        const meanB = b.reduce((x, y) => x + y, 0) / n;
+
+        let covariance = 0;
+        let varianceA = 0;
+        let varianceB = 0;
+
+        for (let i = 0; i < n; i++) {
+
+            covariance += (a[i] - meanA) * (b[i] - meanB);
+            varianceA += (a[i] - meanA) ** 2;
+            varianceB += (b[i] - meanB) ** 2;
+        }
+
+        if (varianceA === 0 || varianceB === 0) {
+            return 0;
+        }
+
+        return covariance / Math.sqrt(varianceA * varianceB);
+    },
+
+
+    // Returns stretches of the chunk whose translations look shifted by one
+    // slot, as [{ start, end }] (0 based, inclusive, padded a little).
+    findShiftedRegions(chunk, translations) {
+
+        const WINDOW = 10;       // lines compared at a time
+        const MARGIN = 0.5;      // how much better a neighbouring slot must fit
+        const MIN_BEST = 1.2;    // and it must also fit well by itself
+        const MIN_RUN = 5;       // in this many windows in a row
+        const PAD = 3;           // extra lines around a found stretch
+
+        const n = chunk.length;
+
+        if (n < 2 * WINDOW) {
+            return [];
+        }
+
+        const english = chunk.map(
+            subtitle => this.shiftFeatures(subtitle.text)
+        );
+
+        const translated = chunk.map(
+            (subtitle, i) => this.shiftFeatures(translations[i])
+        );
+
+        // How well the English lines of one window fit the translations
+        // found `offset` slots further on
+        const fit = (start, offset) => {
+
+            const rows = [];
+
+            for (let i = start; i < start + WINDOW; i++) {
+
+                if (i + offset >= 0 && i + offset < n) {
+                    rows.push(i);
+                }
+            }
+
+            if (rows.length < WINDOW - 1) {
+                return null;
+            }
+
+            const correlation = this.pearson(
+                rows.map(i => english[i].length),
+                rows.map(i => translated[i + offset].length)
+            );
+
+            let agreement = 0;
+
+            for (const i of rows) {
+
+                const a = english[i];
+                const b = translated[i + offset];
+
+                agreement += (
+                    (a.question === b.question) +
+                    (a.exclaim === b.exclaim) +
+                    (a.breaks === b.breaks) +
+                    (a.dash === b.dash)
+                ) / 4;
+            }
+
+            return correlation + agreement / rows.length;
+        };
+
+        // Windows where a neighbouring slot fits clearly better
+        const flagged = [];
+
+        for (let start = 0; start + WINDOW <= n; start++) {
+
+            const here = fit(start, 0);
+
+            if (here === null) {
+                continue;
+            }
+
+            let bestOffset = 0;
+            let bestScore = here;
+
+            for (const offset of [-1, 1]) {
+
+                const score = fit(start, offset);
+
+                if (score !== null && score > bestScore) {
+                    bestOffset = offset;
+                    bestScore = score;
+                }
+            }
+
+            if (
+                bestOffset !== 0 &&
+                bestScore - here >= MARGIN &&
+                bestScore >= MIN_BEST
+            ) {
+                flagged.push({ start: start, offset: bestOffset });
+            }
+        }
+
+        // Keep only long runs of flagged windows with the same offset
+        const regions = [];
+        let run = [];
+
+        const closeRun = () => {
+
+            if (run.length >= MIN_RUN) {
+
+                regions.push({
+                    start: run[0].start,
+                    end: run[run.length - 1].start + WINDOW - 1
+                });
+            }
+
+            run = [];
+        };
+
+        for (const item of flagged) {
+
+            const last = run[run.length - 1];
+
+            if (
+                last &&
+                item.start === last.start + 1 &&
+                item.offset === last.offset
+            ) {
+                run.push(item);
+            }
+            else {
+                closeRun();
+                run = [item];
+            }
+        }
+
+        closeRun();
+
+        // Join stretches that almost touch, then pad
+        const merged = [];
+
+        for (const region of regions) {
+
+            const last = merged[merged.length - 1];
+
+            if (last && region.start <= last.end + WINDOW) {
+                last.end = Math.max(last.end, region.end);
+            }
+            else {
+                merged.push({ start: region.start, end: region.end });
+            }
+        }
+
+        return merged.map(region => ({
+            start: Math.max(0, region.start - PAD),
+            end: Math.min(n - 1, region.end + PAD)
+        }));
+    },
+
+
+    // Translates a shifted stretch again, in small pieces, and writes the
+    // new text back into the SAME positions. Never throws: a piece that
+    // cannot be fixed keeps its old text.
+    async fixShiftedRegions(
+        chunk,
+        translations,
+        apiKey,
+        customPrompt
+    ) {
+
+        const MAX_PIECE_SIZE = 30;   // lines per small request
+        const MAX_PIECES = 10;
+        const ATTEMPTS = 2;
+
+        try {
+
+            const regions = this.findShiftedRegions(
+                chunk,
+                translations
+            );
+
+            if (regions.length === 0) {
+                return translations;
+            }
+
+            let pieces = 0;
+
+            for (const region of regions) {
+
+                const first = chunk[region.start].index;
+                const last = chunk[region.end].index;
+
+                console.warn(
+                    `Shift detected: subtitles ${first} to ${last} look ` +
+                    `one slot off. Translating that section again.`
+                );
+
+                this.notify(
+                    `Fixing a shifted section (subtitles ${first} to ${last})...`
+                );
+
+                // Equal sized pieces, for example 101 lines becomes 4 pieces
+                // of about 26 and not 30 + 30 + 30 + 11
+                const length = region.end - region.start + 1;
+
+                const pieceCount = Math.ceil(length / MAX_PIECE_SIZE);
+
+                const pieceSize = Math.ceil(length / pieceCount);
+
+                for (
+                    let from = region.start;
+                    from <= region.end;
+                    from += pieceSize
+                ) {
+
+                    if (pieces >= MAX_PIECES) {
+
+                        console.warn(
+                            "Shift repair stopped: too many pieces for one chunk"
+                        );
+
+                        break;
+                    }
+
+                    pieces++;
+
+                    const to = Math.min(
+                        from + pieceSize - 1,
+                        region.end
+                    );
+
+                    const piece = chunk.slice(from, to + 1);
+
+                    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+
+                        try {
+
+                            const fixed = await this.translateChunk(
+                                piece,
+                                apiKey,
+                                customPrompt,
+                                { noShiftCheck: true }
+                            );
+
+                            fixed.forEach((subtitle, k) => {
+
+                                translations[from + k] = subtitle.text;
+
+                                if (translations.anchors) {
+                                    translations.anchors[from + k] = null;
+                                }
+                            });
+
+                            break;
+                        }
+                        catch (error) {
+
+                            console.warn(
+                                `Could not translate subtitles ` +
+                                `${piece[0].index} to ` +
+                                `${piece[piece.length - 1].index} again ` +
+                                `(attempt ${attempt} of ${ATTEMPTS})`,
+                                error
+                            );
+                        }
+                    }
+                }
+            }
+
+            // One more look, without trying again
+            const left = this.findShiftedRegions(
+                chunk,
+                translations
+            );
+
+            if (left.length > 0) {
+
+                console.warn(
+                    "Some lines may still be shifted: " +
+                    left
+                        .map(r => `${chunk[r.start].index} to ${chunk[r.end].index}`)
+                        .join(", ")
+                );
+            }
+        }
+        catch (error) {
+
+            console.warn(
+                "Shift check skipped:",
                 error
             );
         }
