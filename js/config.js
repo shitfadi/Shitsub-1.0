@@ -10,7 +10,7 @@ const CONFIG = {
     // Which entry of LANGUAGES (below) to translate into
     TARGET_LANGUAGE: "malayalam",
 
-        CHUNK_SIZE: 200,
+        CHUNK_SIZE: 150,
     MAX_PARALLEL: 4,
     MIN_PARALLEL: 1,
 
