@@ -141,11 +141,11 @@ IMPORTANT DUPLICATE RULE:
 
 FORMAT (follow exactly for EVERY subtitle):
 [[SUBTITLE_1]]
-SRC: first three words of that English subtitle, copied exactly
+SRC: the first five words of that English subtitle, copied exactly
 MAL: ${L.name} translation of that same subtitle
 
 [[SUBTITLE_2]]
-SRC: first three words of that English subtitle, copied exactly
+SRC: the first five words of that English subtitle, copied exactly
 MAL: ${L.name} translation of that same subtitle
 
 SUBTITLES:
@@ -161,6 +161,31 @@ ${input}`;
                 result,
                 chunk.length
             );
+
+        // SRC coverage gate — retry if the response was malformed or truncated
+        const expectedCount = chunk.filter(
+            s => (s.text || "").trim()
+        ).length;
+
+        const presentCount = (translations.anchors || [])
+            .filter(Boolean).length;
+
+        if (expectedCount > 0 && presentCount / expectedCount < 0.90) {
+
+            const err = new Error(
+                `SRC coverage ${presentCount}/${expectedCount} — retrying`
+            );
+
+            err.coverage = true;
+
+            throw err;
+        }
+
+        // Realign translations that landed in the wrong slot
+        translations = this.realignByAnchor(chunk, translations);
+
+        // Strip 1-2 stray non-Malayalam characters per line
+        this.stripStrayScripts(translations);
 
         // Remove English that was copied next to the translation
         this.cleanEnglishEchoes(
@@ -320,7 +345,10 @@ ${input}`;
                                 }
                             ]
                         }
-                    ]
+                    ],
+                    generationConfig: {
+                        maxOutputTokens: 16384
+                    }
                 })
             }
         );
@@ -362,10 +390,36 @@ ${input}`;
         const data =
             await response.json();
 
+        const candidate =
+            data?.candidates?.[0];
+
+        if (data?.promptFeedback?.blockReason) {
+
+            throw new Error(
+                `Gemini blocked the request: ${data.promptFeedback.blockReason}`
+            );
+        }
+
+        if (candidate?.finishReason === "MAX_TOKENS") {
+
+            const err = new Error(
+                "Gemini output was truncated (MAX_TOKENS)"
+            );
+
+            err.truncated = true;
+
+            throw err;
+        }
+
+        if (candidate?.finishReason === "SAFETY") {
+
+            throw new Error(
+                "Gemini blocked the output (SAFETY)"
+            );
+        }
+
         const result =
-            data?.candidates?.[0]
-                ?.content?.parts?.[0]
-                ?.text;
+            candidate?.content?.parts?.[0]?.text;
 
         if (!result) {
             throw new Error(
@@ -424,10 +478,18 @@ ${input}`;
                     number <= count
                 ) {
 
-                    currentNumber =
-                        number;
+                    // Duplicate ID: ignore the whole block
+                    if (seen.has(number)) {
+
+                        currentNumber = null;
+
+                        continue;
+                    }
 
                     seen.add(number);
+
+                    currentNumber =
+                        number;
 
                     if (
                         translations[
@@ -498,6 +560,127 @@ ${input}`;
     },
 
 
+    // Deletes 1-2 stray non-Malayalam characters per line.
+    // 3+ stray chars are left for the API retry (fixStubbornLines).
+    stripStrayScripts(translations) {
+
+        const ALLOWED = /^[\u0D00-\u0D7F\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]$/u;
+
+        let cleaned = 0;
+
+        for (let i = 0; i < translations.length; i++) {
+
+            const text = translations[i];
+
+            if (!text || typeof text !== "string") {
+                continue;
+            }
+
+            const badChars = [];
+
+            for (const ch of text) {
+                if (!ALLOWED.test(ch)) {
+                    badChars.push(ch);
+                }
+            }
+
+            if (badChars.length === 0 || badChars.length > 2) {
+                continue;
+            }
+
+            let result = "";
+
+            for (const ch of text) {
+                if (ALLOWED.test(ch)) {
+                    result += ch;
+                }
+            }
+
+            translations[i] = result;
+
+            cleaned++;
+        }
+
+        if (cleaned > 0) {
+            console.warn(
+                `[stripStrayScripts] cleaned ${cleaned} line(s)`
+            );
+        }
+
+        return translations;
+    },
+
+
+    // Moves translations into the slot their SRC anchor belongs to.
+    // Conservative: only moves when the target slot is empty.
+    realignByAnchor(chunk, translations) {
+
+        const norm = t => String(t || "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\|\|\|/g, " ")
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const matches = (text, anchor) => {
+            const t = norm(text);
+            const a = norm(anchor);
+            if (!a) return false;
+            return t === a || t.startsWith(a + " ");
+        };
+
+        const out = translations.slice();
+        const anchors = (translations.anchors || []).slice();
+
+        let moved = 0;
+
+        for (let i = 0; i < out.length; i++) {
+
+            const anchor = anchors[i];
+
+            if (!anchor) continue;
+            if (!norm(anchor)) continue;
+
+            if (matches(chunk[i].text, anchor)) continue;
+
+            let target = -1;
+
+            for (let j = 0; j < chunk.length; j++) {
+
+                if (j === i) continue;
+
+                if (matches(chunk[j].text, anchor)) {
+                    target = j;
+                    break;
+                }
+            }
+
+            if (target === -1) continue;
+
+            if (out[target] && out[target].trim()) continue;
+
+            out[target] = out[i];
+            out[i] = "";
+
+            anchors[target] = null;
+            anchors[i] = null;
+
+            moved++;
+        }
+
+        if (moved > 0) {
+            console.warn(
+                `[realignByAnchor] moved ${moved} translation(s)`
+            );
+        }
+
+        out.anchors = anchors;
+
+        return out;
+    },
+
+
     validateTranslations(
         chunk,
         translations
@@ -521,8 +704,7 @@ ${input}`;
 
         for (
             let i = 0;
-            i < chunk.length;
-            i++
+            i < chunk.length; i++
         ) {
 
             const english =
