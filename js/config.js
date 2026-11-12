@@ -10,7 +10,7 @@ const CONFIG = {
     // Which entry of LANGUAGES (below) to translate into
     TARGET_LANGUAGE: "malayalam",
 
-        CHUNK_SIZE: 150,
+    CHUNK_SIZE: 100,
     MAX_PARALLEL: 4,
     MIN_PARALLEL: 1,
 
@@ -19,6 +19,7 @@ const CONFIG = {
     MAX_RETRY_DELAY: 120000,
 
     BATCH_DELAY: 5000,
+    REQUEST_TIMEOUT: 120000,
 
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
