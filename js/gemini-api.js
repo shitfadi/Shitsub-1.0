@@ -347,7 +347,10 @@ ${input}`;
                         }
                     ],
                     generationConfig: {
-                        maxOutputTokens: 16384
+                        maxOutputTokens: 16384,
+                        thinkingConfig: {
+                            thinkingLevel: "LOW"
+                        }
                     }
                 })
             }
@@ -418,8 +421,12 @@ ${input}`;
             );
         }
 
-        const result =
-            candidate?.content?.parts?.[0]?.text;
+        // Filter out internal reasoning blocks (thought: true) in Gemini 3.8 Flash
+        const parts = candidate?.content?.parts || [];
+        const outputParts = parts.filter(
+            part => !part.thought && typeof part.text === "string"
+        );
+        const result = outputParts.map(part => part.text).join("\n").trim();
 
         if (!result) {
             throw new Error(
@@ -445,8 +452,12 @@ ${input}`;
         const seen =
             new Set();
 
+        const cleanedResult = String(result || "")
+            .replace(/^```[a-z]*\s*/gim, "")
+            .replace(/```\s*$/gim, "");
+
         const lines =
-            result.split(/\r?\n/);
+            cleanedResult.split(/\r?\n/);
 
         let currentNumber =
             null;
