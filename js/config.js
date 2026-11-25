@@ -27,7 +27,7 @@ const CONFIG = {
     /* ---------- Rate-limit protection (free tier: 15 RPM) ---------- */
     // Pause between groups of parallel requests (ms).
     // At ~20s per request, 8s keeps you around 10-11 requests per minute.
-    BATCH_DELAY: 8000,
+    BATCH_DELAY: 5000,
 
     // Cancel a request that gets no answer (ms).
     REQUEST_TIMEOUT: 120000,
