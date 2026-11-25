@@ -16,13 +16,21 @@ const CONFIG = {
     MAX_PARALLEL: 5,        // requests sent at the same time
     MIN_PARALLEL: 1,
 
+    // false = your old behavior (chunks of CHUNK_SIZE, last one smaller)
+    // true  = equal-sized chunks that fill every worker (700 lines = 5 x 140)
+    // Set to true again only after a normal test works.
+    BALANCE_CHUNKS: false,
+
+    // Max length of Gemini's answer. 16384 is your old working value.
+    MAX_OUTPUT_TOKENS: 16384,
+
     /* ---------- Rate-limit protection (free tier: 15 RPM) ---------- */
     // Pause between groups of parallel requests (ms).
-    // Each group of 5 takes ~25-55s, so this keeps you well under 15 RPM.
-    BATCH_DELAY: 5000,
+    // At ~20s per request, 8s keeps you around 10-11 requests per minute.
+    BATCH_DELAY: 8000,
 
-    // Cancel a request that gets no answer (ms). 200-line chunks can be slow.
-    REQUEST_TIMEOUT: 180000,
+    // Cancel a request that gets no answer (ms).
+    REQUEST_TIMEOUT: 120000,
 
     /* ---------- Retry protection ---------- */
     MAX_RETRIES: 5,
@@ -41,10 +49,7 @@ const CONFIG = {
    OPTIONAL: balanced chunks
    Splits a file into equal chunks that fill every worker,
    for example 700 lines becomes 5 x 140 instead of 200+200+200+100.
-
-   Not used unless you call it where your chunks are built:
-       chunks = balanceChunks(chunks);
-   (your gemini file does not need any change)
+   Only runs when CONFIG.BALANCE_CHUNKS is true.
    ========================================================= */
 
 function balanceChunks(chunks) {
