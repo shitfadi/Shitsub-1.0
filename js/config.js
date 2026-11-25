@@ -9,7 +9,7 @@ const CONFIG = {
 
     // ----- Mistral (free Experiment plan) -----
     // Paste your MISTRAL key in the API key box of the page.
-    MODEL: "mistral-small-latest",   // or the exact name shown in your Mistral console
+    MODEL: "mistral-large-2512",     // Mistral Large 3 (250,000 tokens/min, 1 request/sec)
     API_URL: "https://api.mistral.ai/v1/chat/completions",
 
     // ----- To go back to Gemini, comment out the 4 lines above and use these -----
