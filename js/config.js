@@ -11,7 +11,7 @@ API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-fla
     // Which entry of LANGUAGES (below) to translate into
     TARGET_LANGUAGE: "malayalam",
 
-        CHUNK_SIZE: 150,
+        CHUNK_SIZE: 200,
     MAX_PARALLEL: 4,
     MIN_PARALLEL: 1,
 
