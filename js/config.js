@@ -5,21 +5,29 @@
 
 const CONFIG = {
     MODEL: "gemini-3.1-flash-lite",
-API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
-
+    API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
 
     // Which entry of LANGUAGES (below) to translate into
     TARGET_LANGUAGE: "malayalam",
 
-        CHUNK_SIZE: 200,
-    MAX_PARALLEL: 4,
+    /* ---------- Speed ---------- */
+    CHUNK_SIZE: 200,        // subtitles per request
+    MIN_CHUNK_SIZE: 50,     // used only by balanceChunks(): never split smaller than this
+    MAX_PARALLEL: 5,        // requests sent at the same time
     MIN_PARALLEL: 1,
 
-    MAX_RETRIES: 5,
-    INITIAL_RETRY_DELAY: 5000,
-    MAX_RETRY_DELAY: 120000,
-
+    /* ---------- Rate-limit protection (free tier: 15 RPM) ---------- */
+    // Pause between groups of parallel requests (ms).
+    // Each group of 5 takes ~25-55s, so this keeps you well under 15 RPM.
     BATCH_DELAY: 5000,
+
+    // Cancel a request that gets no answer (ms). 200-line chunks can be slow.
+    REQUEST_TIMEOUT: 180000,
+
+    /* ---------- Retry protection ---------- */
+    MAX_RETRIES: 5,
+    INITIAL_RETRY_DELAY: 5000,   // 5s, then 10s, 20s, 40s ...
+    MAX_RETRY_DELAY: 120000,     // never wait more than 2 minutes
 
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
@@ -27,6 +35,54 @@ API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-fla
         PROGRESS: "shitsub_progress"
     }
 };
+
+
+/* =========================================================
+   OPTIONAL: balanced chunks
+   Splits a file into equal chunks that fill every worker,
+   for example 700 lines becomes 5 x 140 instead of 200+200+200+100.
+
+   Not used unless you call it where your chunks are built:
+       chunks = balanceChunks(chunks);
+   (your gemini file does not need any change)
+   ========================================================= */
+
+function balanceChunks(chunks) {
+
+    const all = chunks.flat();
+
+    if (all.length === 0) {
+        return chunks;
+    }
+
+    const parallel = CONFIG.MAX_PARALLEL || 1;
+    const minSize = CONFIG.MIN_CHUNK_SIZE || 50;
+
+    // Number of chunks: enough for CHUNK_SIZE, rounded up to fill every worker
+    let count = Math.ceil(all.length / CONFIG.CHUNK_SIZE);
+    count = Math.ceil(count / parallel) * parallel;
+
+    // Never make chunks smaller than MIN_CHUNK_SIZE
+    count = Math.max(1, Math.min(count, Math.floor(all.length / minSize) || 1));
+
+    const base = Math.floor(all.length / count);
+    const extra = all.length % count;
+
+    const out = [];
+    let pos = 0;
+
+    for (let i = 0; i < count; i++) {
+
+        const size = base + (i < extra ? 1 : 0);
+
+        out.push(all.slice(pos, pos + size));
+
+        pos += size;
+    }
+
+    return out;
+}
+
 
 const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natural spoken Kerala Malayalam with street-level local flavor and everyday slang (no bookish words). 
 
