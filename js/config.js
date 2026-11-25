@@ -4,58 +4,22 @@
    ========================================================= */
 
 const CONFIG = {
-    // Which company's API to call: "mistral" or "gemini"
-    PROVIDER: "mistral",
+    MODEL: "gemini-3.1-flash-lite",
+API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
 
-    // ----- Mistral (free Experiment plan) -----
-    // Paste your MISTRAL key in the API key box of the page.
-    MODEL: "mistral-large-2512",     // Mistral Large 3 (250,000 tokens/min, 1 request/sec)
-    API_URL: "https://api.mistral.ai/v1/chat/completions",
-
-    // ----- To go back to Gemini, comment out the 4 lines above and use these -----
-    // PROVIDER: "gemini",
-    // MODEL: "gemini-3.1-flash-lite",
-    // API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
-    // (paste your Gemini key in the API key box again)
 
     // Which entry of LANGUAGES (below) to translate into
     TARGET_LANGUAGE: "malayalam",
 
-    /* ---------- Speed ---------- */
-    CHUNK_SIZE: 100,        // subtitles per request (answers are capped at 16k tokens)
-    MIN_CHUNK_SIZE: 50,     // used only by balanceChunks(): never split smaller than this
-    MAX_PARALLEL: 5,        // requests sent at the same time
+        CHUNK_SIZE: 200,
+    MAX_PARALLEL: 4,
     MIN_PARALLEL: 1,
 
-    // false = your old behavior (chunks of CHUNK_SIZE, last one smaller)
-    // true  = equal-sized chunks that fill every worker (700 lines = 5 x 140)
-    // Set to true again only after a normal test works.
-    BALANCE_CHUNKS: false,
-
-    // Max length of Gemini's answer. 16384 is your old working value.
-    MAX_OUTPUT_TOKENS: 16384,
-
-    // Sent only when set. Remove or comment out to skip.
-    TEMPERATURE: 0.3,
-
-    // Gemini only (ignored for Mistral). "low" = faster. Set to "" if the API rejects it.
-    THINKING_LEVEL: "",
-
-    /* ---------- Rate-limit protection ---------- */
-    // Mistral free plan: about 1 request per second per model.
-    // Requests are started at least this far apart (ms). Mistral only.
-    MIN_REQUEST_GAP_MS: 1100,
-
-    // Pause between groups of parallel requests (ms).
-    BATCH_DELAY: 5000,
-
-    // Cancel a request that gets no answer (ms).
-    REQUEST_TIMEOUT: 120000,
-
-    /* ---------- Retry protection ---------- */
     MAX_RETRIES: 5,
-    INITIAL_RETRY_DELAY: 5000,   // 5s, then 10s, 20s, 40s ...
-    MAX_RETRY_DELAY: 120000,     // never wait more than 2 minutes
+    INITIAL_RETRY_DELAY: 5000,
+    MAX_RETRY_DELAY: 120000,
+
+    BATCH_DELAY: 5000,
 
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
@@ -63,51 +27,6 @@ const CONFIG = {
         PROGRESS: "shitsub_progress"
     }
 };
-
-
-/* =========================================================
-   OPTIONAL: balanced chunks
-   Splits a file into equal chunks that fill every worker,
-   for example 700 lines becomes 5 x 140 instead of 200+200+200+100.
-   Only runs when CONFIG.BALANCE_CHUNKS is true.
-   ========================================================= */
-
-function balanceChunks(chunks) {
-
-    const all = chunks.flat();
-
-    if (all.length === 0) {
-        return chunks;
-    }
-
-    const parallel = CONFIG.MAX_PARALLEL || 1;
-    const minSize = CONFIG.MIN_CHUNK_SIZE || 50;
-
-    // Number of chunks: enough for CHUNK_SIZE, rounded up to fill every worker
-    let count = Math.ceil(all.length / CONFIG.CHUNK_SIZE);
-    count = Math.ceil(count / parallel) * parallel;
-
-    // Never make chunks smaller than MIN_CHUNK_SIZE
-    count = Math.max(1, Math.min(count, Math.floor(all.length / minSize) || 1));
-
-    const base = Math.floor(all.length / count);
-    const extra = all.length % count;
-
-    const out = [];
-    let pos = 0;
-
-    for (let i = 0; i < count; i++) {
-
-        const size = base + (i < extra ? 1 : 0);
-
-        out.push(all.slice(pos, pos + size));
-
-        pos += size;
-    }
-
-    return out;
-}
-
 
 const DEFAULT_PROMPT = `Translate every English movie or TV subtitle into natural spoken Kerala Malayalam with street-level local flavor and everyday slang (no bookish words). 
 
