@@ -325,6 +325,16 @@ ${input}`;
 
     async sendToGemini(prompt, apiKey, signal) {
 
+        // NEW: other company's API (OpenAI-style), chosen in config.js
+        if (CONFIG.PROVIDER === "mistral") {
+
+            return this.sendToMistral(
+                prompt,
+                apiKey,
+                signal
+            );
+        }
+
         const response = await fetch(
             `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
             {
@@ -346,9 +356,26 @@ ${input}`;
                             ]
                         }
                     ],
-                    generationConfig: {
-                        maxOutputTokens: 16384
-                    }
+                    // NEW: temperature and thinking level come from config.
+                    // They are sent only when set.
+                    generationConfig: (() => {
+
+                        const g = {
+                            maxOutputTokens: CONFIG.MAX_OUTPUT_TOKENS || 16384
+                        };
+
+                        if (CONFIG.TEMPERATURE !== undefined) {
+                            g.temperature = CONFIG.TEMPERATURE;
+                        }
+
+                        if (CONFIG.THINKING_LEVEL) {
+                            g.thinkingConfig = {
+                                thinkingLevel: CONFIG.THINKING_LEVEL
+                            };
+                        }
+
+                        return g;
+                    })()
                 })
             }
         );
@@ -424,6 +451,131 @@ ${input}`;
         if (!result) {
             throw new Error(
                 "Gemini returned an empty response"
+            );
+        }
+
+        return result;
+    },
+
+
+    // ---------------------------------------------------------
+    // NEW: Mistral (OpenAI-style chat API). Used when
+    // CONFIG.PROVIDER is "mistral". Returns the reply text and throws
+    // the same kinds of errors as the Gemini version, so retries,
+    // timeouts and saved progress work unchanged.
+    // ---------------------------------------------------------
+
+    _mistralLastStart: 0,
+
+    async sendToMistral(prompt, apiKey, signal) {
+
+        // The free plan allows about 1 request per second, so start
+        // requests at least MIN_REQUEST_GAP_MS apart.
+        const gap = CONFIG.MIN_REQUEST_GAP_MS || 1100;
+
+        const now = Date.now();
+
+        const startAt = Math.max(
+            now,
+            this._mistralLastStart + gap
+        );
+
+        this._mistralLastStart = startAt;
+
+        if (startAt > now) {
+            await this.sleep(startAt - now);
+        }
+
+        const body = {
+            model: CONFIG.MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            max_tokens: CONFIG.MAX_OUTPUT_TOKENS || 16384
+        };
+
+        if (CONFIG.TEMPERATURE !== undefined) {
+            body.temperature = CONFIG.TEMPERATURE;
+        }
+
+        const response = await fetch(
+            CONFIG.API_URL,
+            {
+                method: "POST",
+
+                signal: signal,
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+
+                body: JSON.stringify(body)
+            }
+        );
+
+        if (!response.ok) {
+
+            let errorData = null;
+
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                // Ignore JSON parsing failure
+            }
+
+            const error = new Error(
+                `Mistral API error ${response.status}: ` +
+                JSON.stringify(errorData || {})
+            );
+
+            error.status = response.status;
+
+            const retryAfter = parseFloat(
+                response.headers.get("retry-after")
+            );
+
+            error.retryDelay = Number.isFinite(retryAfter)
+                ? `${retryAfter}s`
+                : null;
+
+            throw error;
+        }
+
+        const data = await response.json();
+
+        const choice = data?.choices?.[0];
+
+        if (choice?.finish_reason === "length") {
+
+            const err = new Error(
+                "Mistral output was truncated (MAX_TOKENS)"
+            );
+
+            err.truncated = true;
+
+            throw err;
+        }
+
+        let result = choice?.message?.content;
+
+        // Some models return the reply as a list of parts.
+        // Keep only the text parts (not any thinking parts).
+        if (Array.isArray(result)) {
+
+            result = result
+                .filter(part => !part.type || part.type === "text")
+                .map(part => part.text || "")
+                .join("");
+        }
+
+        if (!result || !String(result).trim()) {
+
+            throw new Error(
+                "Mistral returned an empty response"
             );
         }
 
@@ -2280,6 +2432,17 @@ ${input}`;
         customPrompt,
         onProgress
     ) {
+
+        // NEW: split into equal chunks so every parallel worker is used
+        // (700 lines becomes 5 x 140). Uses balanceChunks() from config.js.
+        // Skipped automatically if that function is missing, or turned
+        // off with CONFIG.BALANCE_CHUNKS = false.
+        if (
+            CONFIG.BALANCE_CHUNKS !== false &&
+            typeof balanceChunks === "function"
+        ) {
+            chunks = balanceChunks(chunks);
+        }
 
         const results =
             new Array(chunks.length);
