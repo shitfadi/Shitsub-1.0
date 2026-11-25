@@ -19,7 +19,7 @@ API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-fla
     INITIAL_RETRY_DELAY: 5000,
     MAX_RETRY_DELAY: 120000,
 
-    BATCH_DELAY: 5000,
+    BATCH_DELAY: 8000,
 
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
