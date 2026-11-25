@@ -13,7 +13,7 @@ const CONFIG = {
     /* ---------- Speed ---------- */
     CHUNK_SIZE: 200,        // subtitles per request
     MIN_CHUNK_SIZE: 50,     // used only by balanceChunks(): never split smaller than this
-    MAX_PARALLEL: 5,        // requests sent at the same time
+    MAX_PARALLEL: 4,        // requests sent at the same time
     MIN_PARALLEL: 1,
 
     // false = your old behavior (chunks of CHUNK_SIZE, last one smaller)
@@ -27,7 +27,7 @@ const CONFIG = {
     /* ---------- Rate-limit protection (free tier: 15 RPM) ---------- */
     // Pause between groups of parallel requests (ms).
     // At ~20s per request, 8s keeps you around 10-11 requests per minute.
-    BATCH_DELAY: 8000,
+    BATCH_DELAY: 5000,
 
     // Cancel a request that gets no answer (ms).
     REQUEST_TIMEOUT: 120000,
