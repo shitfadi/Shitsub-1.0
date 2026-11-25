@@ -1,0 +1,2564 @@
+/* =========================================================
+   SHITSUB - Gemini API
+   Robust translation + validation + targeted recovery
+   Multi-language ready (see CONFIG.TARGET_LANGUAGE / LANGUAGES)
+   ========================================================= */
+
+const GeminiAPI = {
+
+    // Target-language spellings of English words, remembered for the whole file
+    wordCache: {},
+
+    // The page can set this to show short notes (waiting, resuming)
+    onStatus: null,
+
+    // Cache of built regexes (cheap speed-up)
+    _rxCache: {},
+
+
+    // ---------------------------------------------------------
+    // Language helpers
+    // ---------------------------------------------------------
+
+    lang() {
+
+        return LANGUAGES[CONFIG.TARGET_LANGUAGE] ||
+            LANGUAGES.malayalam;
+    },
+
+    rx(source, flags) {
+
+        const key = flags + "/" + source;
+
+        return this._rxCache[key] ||
+            (this._rxCache[key] = new RegExp(source, flags));
+    },
+
+    scriptSource() {
+
+        return `\\p{Script=${this.lang().script}}`;
+    },
+
+    hasTarget(text) {
+
+        return this.rx(
+            this.scriptSource(),
+            "u"
+        ).test(text || "");
+    },
+
+    countTarget(text) {
+
+        return (
+            String(text || "").match(
+                this.rx(this.scriptSource(), "gu")
+            ) || []
+        ).length;
+    },
+
+    // Prompt to use: the person's custom prompt, else the language default
+    basePrompt(customPrompt) {
+
+        return (customPrompt && String(customPrompt).trim())
+            ? customPrompt
+            : this.lang().prompt;
+    },
+
+    // Script rules written into the main prompt
+    scriptRules() {
+
+        const L = this.lang();
+
+        const others = FOREIGN_SCRIPT_NAMES
+            .filter(name => name !== L.script)
+            .join(", ");
+
+        if (L.latinAllowed) {
+
+            return `- Write the translation in ${L.name} only.
+- Never use ${others} or any other non-Latin script.
+- Never copy the English subtitle into the translation line.
+- Keep numbers, URLs and the meaning of names accurate.`;
+        }
+
+        return `- Use ${L.name} script for ${L.name} dialogue.
+- Never use ${others} or any other script.
+- Do not transliterate ${L.name} into another script.
+- Do not mix ${L.name} with another script.
+- Write EVERYTHING in ${L.name} script. Never use English (Latin) letters in the MAL line.
+- The MAL line must contain ONLY the ${L.name} translation. Never copy the English subtitle into the MAL line.
+- Write names, places, brands, abbreviations and units in ${L.name} script too (for example ${L.examples}). Spell each name the same way every time.
+- Numbers may stay as digits.
+- Keep numbers, URLs and the meaning of names accurate.`;
+    },
+
+
+    async translateChunk(chunk, apiKey, customPrompt) {
+
+        const L = this.lang();
+
+        const input = chunk.map((subtitle, index) => {
+            return `[[SUBTITLE_${index + 1}]]\n${subtitle.text}`;
+        }).join("\n\n");
+
+        const prompt = `${this.basePrompt(customPrompt)}
+
+IMPORTANT:
+Translate EVERY subtitle below into ${L.dialect}${L.style ? " " + L.style : ""}.
+
+The subtitles are identified by immutable IDs.
+
+STRICT RULES:
+- Translate every subtitle.
+- Preserve every [[SUBTITLE_X]] ID exactly.
+- Each ID must appear exactly once.
+- Never change an ID.
+- Never remove an ID.
+- Never invent an ID.
+- Never duplicate an ID.
+- The translation after an ID MUST correspond to the English subtitle belonging to that exact ID.
+- Never move a translation from one subtitle ID to another.
+- Translate each subtitle independently.
+- Use surrounding subtitles only to understand context.
+- Do not merge subtitles.
+- Do not split subtitles.
+- Do not skip subtitles.
+- Do not summarize.
+- Do not add explanations.
+- Return ONLY subtitle IDs, SRC lines and MAL translations.
+- Use ${L.dialect}.
+- Preserve the character's personality, emotion, tone and slang.
+- Do not unnecessarily make casual dialogue formal.
+${this.scriptRules()}
+- Preserve HTML tags such as <i>, </i>, <b>, </b>, <u>, </u> exactly when present.
+- Do not add Markdown.
+- Do not add quotation marks unless they are part of the original subtitle.
+
+IMPORTANT DUPLICATE RULE:
+- Different English subtitles may legitimately have similar ${L.name} translations.
+- However, never copy a translation from another subtitle simply because the English subtitles look similar.
+- Each translation must be based on the English text belonging to its own ID.
+
+FORMAT (follow exactly for EVERY subtitle):
+[[SUBTITLE_1]]
+SRC: the first five words of that English subtitle, copied exactly
+MAL: ${L.name} translation of that same subtitle
+
+[[SUBTITLE_2]]
+SRC: the first five words of that English subtitle, copied exactly
+MAL: ${L.name} translation of that same subtitle
+
+SUBTITLES:
+${input}`;
+
+        const result = await this.callGemini(
+            prompt,
+            apiKey
+        );
+
+        let translations =
+            this.parseIdTranslations(
+                result,
+                chunk.length
+            );
+
+        // SRC coverage gate — retry if the response was malformed or truncated
+        const expectedCount = chunk.filter(
+            s => (s.text || "").trim()
+        ).length;
+
+        const presentCount = (translations.anchors || [])
+            .filter(Boolean).length;
+
+        if (expectedCount > 0 && presentCount / expectedCount < 0.90) {
+
+            const err = new Error(
+                `SRC coverage ${presentCount}/${expectedCount} — retrying`
+            );
+
+            err.coverage = true;
+
+            throw err;
+        }
+
+        // Realign translations that landed in the wrong slot
+        translations = this.realignByAnchor(chunk, translations);
+
+        // Strip 1-2 stray non-Malayalam characters per line
+        this.stripStrayScripts(translations);
+
+        // Remove English that was copied next to the translation
+        this.cleanEnglishEchoes(
+            chunk,
+            translations
+        );
+
+        // Replace leftover English words with target-language spellings
+        // (one small call per chunk, cached for the whole file)
+        await this.fixEnglishWords(
+            chunk,
+            translations,
+            apiKey,
+            customPrompt
+        );
+
+        let problems =
+            this.validateTranslations(
+                chunk,
+                translations
+            );
+
+        if (problems.length > 0) {
+
+            console.warn(
+                "Translation validation problems:",
+                problems
+            );
+
+            translations =
+                await this.recoverProblems(
+                    chunk,
+                    translations,
+                    problems,
+                    apiKey,
+                    customPrompt
+                );
+        }
+
+        this.cleanEnglishEchoes(
+            chunk,
+            translations
+        );
+
+        // Last chance for lines that still have a wrong script or English
+        await this.fixStubbornLines(
+            chunk,
+            translations,
+            apiKey,
+            customPrompt
+        );
+
+        const finalProblems =
+            this.validateTranslations(
+                chunk,
+                translations
+            );
+
+        // Only serious problems should fail the chunk.
+        // "duplicate" and "tokens" are soft checks that can be false alarms.
+        const hardProblems = finalProblems.filter(problem =>
+            !problem.startsWith("duplicate:") &&
+            !problem.startsWith("tokens:") &&
+            !problem.startsWith("tags:") &&
+            !problem.startsWith("latin:") &&
+            !problem.startsWith("language:") &&
+            !problem.startsWith("digits:")
+        );
+
+        if (hardProblems.length < finalProblems.length) {
+            console.warn(
+                "Accepted with soft validation warnings:",
+                finalProblems.filter(p => !hardProblems.includes(p))
+            );
+        }
+
+        if (hardProblems.length > 0) {
+
+            throw new Error(
+                "Translation validation failed: " +
+                hardProblems.join(", ")
+            );
+        }
+
+        return chunk.map(
+            (subtitle, index) => ({
+                ...subtitle,
+                text: translations[index]
+            })
+        );
+    },
+
+
+    // Sends one request to Gemini. If Gemini does not answer in time the
+    // request is cancelled, so the normal retry logic can try again.
+    // Time limit: CONFIG.REQUEST_TIMEOUT (milliseconds), default 2 minutes.
+    async callGemini(prompt, apiKey) {
+
+        const timeoutMs = CONFIG.REQUEST_TIMEOUT || 120000;
+
+        const controller = new AbortController();
+
+        const timer = setTimeout(
+            () => controller.abort(),
+            timeoutMs
+        );
+
+        try {
+
+            return await this.sendToGemini(
+                prompt,
+                apiKey,
+                controller.signal
+            );
+
+        } catch (error) {
+
+            if (error && error.name === "AbortError") {
+
+                const timeoutError = new Error(
+                    `Gemini did not answer within ${Math.round(timeoutMs / 1000)} seconds`
+                );
+
+                timeoutError.timedOut = true;
+
+                throw timeoutError;
+            }
+
+            throw error;
+
+        } finally {
+
+            clearTimeout(timer);
+        }
+    },
+
+
+    async sendToGemini(prompt, apiKey, signal) {
+
+        const response = await fetch(
+            `${CONFIG.API_URL}?key=${encodeURIComponent(apiKey)}`,
+            {
+                method: "POST",
+
+                signal: signal,
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: prompt
+                                }
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        // NEW: 200-line chunks in Malayalam need more room.
+                        // Can be overridden with CONFIG.MAX_OUTPUT_TOKENS.
+                        maxOutputTokens: CONFIG.MAX_OUTPUT_TOKENS || 32768
+                    }
+                })
+            }
+        );
+
+        if (!response.ok) {
+
+            let errorData = null;
+
+            try {
+                errorData =
+                    await response.json();
+            } catch (e) {
+                // Ignore JSON parsing failure
+            }
+
+            const error =
+                new Error(
+                    `Gemini API error ${response.status}: ` +
+                    JSON.stringify(
+                        errorData || {}
+                    )
+                );
+
+            error.status =
+                response.status;
+
+            error.retryDelay =
+                errorData?.error?.details
+                    ?.find(
+                        d =>
+                            d["@type"] ===
+                            "type.googleapis.com/google.rpc.RetryInfo"
+                    )
+                    ?.retryDelay || null;
+
+            throw error;
+        }
+
+        const data =
+            await response.json();
+
+        const candidate =
+            data?.candidates?.[0];
+
+        if (data?.promptFeedback?.blockReason) {
+
+            throw new Error(
+                `Gemini blocked the request: ${data.promptFeedback.blockReason}`
+            );
+        }
+
+        if (candidate?.finishReason === "MAX_TOKENS") {
+
+            const err = new Error(
+                "Gemini output was truncated (MAX_TOKENS)"
+            );
+
+            err.truncated = true;
+
+            throw err;
+        }
+
+        if (candidate?.finishReason === "SAFETY") {
+
+            throw new Error(
+                "Gemini blocked the output (SAFETY)"
+            );
+        }
+
+        const result =
+            candidate?.content?.parts?.[0]?.text;
+
+        if (!result) {
+            throw new Error(
+                "Gemini returned an empty response"
+            );
+        }
+
+        return result;
+    },
+
+
+    parseIdTranslations(
+        result,
+        count
+    ) {
+
+        const translations =
+            new Array(count);
+
+        const anchors =
+            new Array(count);
+
+        const seen =
+            new Set();
+
+        const lines =
+            result.split(/\r?\n/);
+
+        let currentNumber =
+            null;
+
+        for (const rawLine of lines) {
+
+            const line =
+                rawLine.trim();
+
+            if (!line) {
+                continue;
+            }
+
+            const match =
+                line.match(
+                    /^\s*\[\[SUBTITLE_(\d+)\]\]\s*$/
+                );
+
+            if (match) {
+
+                const number =
+                    parseInt(
+                        match[1],
+                        10
+                    );
+
+                if (
+                    number >= 1 &&
+                    number <= count
+                ) {
+
+                    // Duplicate ID: ignore the whole block
+                    if (seen.has(number)) {
+
+                        currentNumber = null;
+
+                        continue;
+                    }
+
+                    seen.add(number);
+
+                    currentNumber =
+                        number;
+
+                    if (
+                        translations[
+                            number - 1
+                        ] === undefined
+                    ) {
+                        translations[
+                            number - 1
+                        ] = "";
+                    }
+
+                    continue;
+                }
+            }
+
+            if (
+                currentNumber !== null
+            ) {
+
+                const index =
+                    currentNumber - 1;
+
+                // SRC: echo of the English words (used for alignment check)
+                const srcMatch =
+                    line.match(/^SRC\s*:\s*(.*)$/i);
+
+                if (srcMatch) {
+
+                    anchors[index] =
+                        srcMatch[1].trim();
+
+                    continue;
+                }
+
+                // MAL: the translation
+                let textLine = line;
+
+                const malMatch =
+                    line.match(/^MAL\s*:\s*(.*)$/i);
+
+                if (malMatch) {
+
+                    textLine =
+                        malMatch[1].trim();
+
+                    if (!textLine) {
+                        continue;
+                    }
+                }
+
+                if (!translations[index]) {
+
+                    translations[index] =
+                        textLine;
+
+                } else {
+
+                    translations[index] +=
+                        " " + textLine;
+                }
+            }
+        }
+
+        translations.anchors =
+            anchors;
+
+        return translations;
+    },
+
+
+    // Deletes 1-2 stray non-Malayalam characters per line.
+    // 3+ stray chars are left for the API retry (fixStubbornLines).
+    stripStrayScripts(translations) {
+
+        const ALLOWED = /^[\u0D00-\u0D7F\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]$/u;
+
+        let cleaned = 0;
+
+        for (let i = 0; i < translations.length; i++) {
+
+            const text = translations[i];
+
+            if (!text || typeof text !== "string") {
+                continue;
+            }
+
+            const badChars = [];
+
+            for (const ch of text) {
+                if (!ALLOWED.test(ch)) {
+                    badChars.push(ch);
+                }
+            }
+
+            if (badChars.length === 0 || badChars.length > 2) {
+                continue;
+            }
+
+            let result = "";
+
+            for (const ch of text) {
+                if (ALLOWED.test(ch)) {
+                    result += ch;
+                }
+            }
+
+            translations[i] = result;
+
+            cleaned++;
+        }
+
+        if (cleaned > 0) {
+            console.warn(
+                `[stripStrayScripts] cleaned ${cleaned} line(s)`
+            );
+        }
+
+        return translations;
+    },
+
+
+    // Moves translations into the slot their SRC anchor belongs to.
+    // Conservative: only moves when the target slot is empty.
+    realignByAnchor(chunk, translations) {
+
+        const norm = t => String(t || "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\|\|\|/g, " ")
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const matches = (text, anchor) => {
+            const t = norm(text);
+            const a = norm(anchor);
+            if (!a) return false;
+            return t === a || t.startsWith(a + " ");
+        };
+
+        const out = translations.slice();
+        const anchors = (translations.anchors || []).slice();
+
+        let moved = 0;
+
+        for (let i = 0; i < out.length; i++) {
+
+            const anchor = anchors[i];
+
+            if (!anchor) continue;
+            if (!norm(anchor)) continue;
+
+            if (matches(chunk[i].text, anchor)) continue;
+
+            let target = -1;
+
+            for (let j = 0; j < chunk.length; j++) {
+
+                if (j === i) continue;
+
+                if (matches(chunk[j].text, anchor)) {
+                    target = j;
+                    break;
+                }
+            }
+
+            if (target === -1) continue;
+
+            if (out[target] && out[target].trim()) continue;
+
+            out[target] = out[i];
+            out[i] = "";
+
+            anchors[target] = null;
+            anchors[i] = null;
+
+            moved++;
+        }
+
+        if (moved > 0) {
+            console.warn(
+                `[realignByAnchor] moved ${moved} translation(s)`
+            );
+        }
+
+        out.anchors = anchors;
+
+        return out;
+    },
+
+
+    validateTranslations(
+        chunk,
+        translations
+    ) {
+
+        const problems = [];
+
+        const L = this.lang();
+
+        if (
+            !Array.isArray(translations) ||
+            translations.length !== chunk.length
+        ) {
+
+            problems.push(
+                "translation count mismatch"
+            );
+
+            return problems;
+        }
+
+        for (
+            let i = 0;
+            i < chunk.length; i++
+        ) {
+
+            const english =
+                chunk[i].text || "";
+
+            const translated =
+                translations[i];
+
+            if (
+                !translated ||
+                !translated.trim()
+            ) {
+
+                problems.push(
+                    `missing:${i + 1}`
+                );
+
+                continue;
+            }
+
+            if (
+                this.hasMisalignedAnchor(
+                    english,
+                    translations.anchors,
+                    i
+                )
+            ) {
+
+                problems.push(
+                    `shift:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBadLanguage(
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `language:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasStrayDigits(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `digits:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBrokenTags(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `tags:${i + 1}`
+                );
+            }
+
+            if (
+                this.hasBrokenImportantTokens(
+                    english,
+                    translated
+                )
+            ) {
+
+                problems.push(
+                    `tokens:${i + 1}`
+                );
+            }
+
+            if (
+                this.isSuspiciousDuplicate(
+                    chunk,
+                    translations,
+                    i
+                )
+            ) {
+
+                problems.push(
+                    `duplicate:${i + 1}`
+                );
+            }
+
+            // The next two checks only make sense when the target
+            // language does NOT use Latin letters.
+            if (!L.latinAllowed) {
+
+                if (
+                    this.isSuspiciousEnglishCarryover(
+                        english,
+                        translated
+                    )
+                ) {
+
+                    problems.push(
+                        `english:${i + 1}`
+                    );
+                }
+
+                if (
+                    /[A-Za-z]/.test(
+                        translated
+                            .replace(/<[^>]*>/g, "")
+                            .replace(/https?:\/\/[^\s]+/gi, "")
+                    )
+                ) {
+
+                    problems.push(
+                        `latin:${i + 1}`
+                    );
+                }
+            }
+        }
+
+        return problems;
+    },
+
+
+    // A line is "bad language" when it contains a letter from ANY script
+    // other than the target script (and Latin, which is checked
+    // separately). This catches stray Ethiopic, Korean, Cyrillic, Arabic,
+    // Tamil... letters without needing a list of scripts.
+    hasBadLanguage(text) {
+
+        const L = this.lang();
+
+        const clean = String(text || "")
+            .replace(/<[^>]*>/g, "")
+            .replace(/https?:\/\/[^\s]+/gi, "");
+
+        // Allowed: target script, Latin (checked elsewhere), and
+        // Common/Inherited (digits, punctuation, spaces, ZWJ/ZWNJ, emoji).
+        const allowed = this.rx(
+            `^[\\p{Script=${L.script}}\\p{Script=Latin}` +
+            `\\p{Script=Common}\\p{Script=Inherited}]$`,
+            "u"
+        );
+
+        for (const ch of clean) {
+
+            if (!allowed.test(ch)) {
+                return true;
+            }
+        }
+
+        // Latin-script targets have no script ratio to check
+        if (L.latinAllowed) {
+            return false;
+        }
+
+        const targetCount =
+            this.countTarget(clean);
+
+        const latinCount =
+            (clean.match(/[A-Za-z]/g) || []).length;
+
+        const letterCount =
+            targetCount + latinCount;
+
+        // Very short subtitles such as "അതെ", "ഇല്ല", "OK", "FBI"
+        // should not be rejected only because they have few characters.
+        if (letterCount < 4) {
+            return false;
+        }
+
+        return (targetCount / letterCount) < 0.35;
+    },
+
+
+    // Digits stuck INSIDE a word (letter + digits + letter) that are not in
+    // the English subtitle, for example "കളി23യുണ്ട്". This is almost always
+    // a random model glitch, so it is flagged and the line is retried.
+    hasStrayDigits(english, translated) {
+
+        if (this.lang().latinAllowed) {
+            return false;
+        }
+
+        const englishDigits = new Set(
+            String(english || "").match(/\d+/g) || []
+        );
+
+        const S = this.scriptSource();
+
+        const re = this.rx(
+            `${S}(\\d+)(?=${S})`,
+            "gu"
+        );
+
+        re.lastIndex = 0;
+
+        for (const m of String(translated || "").matchAll(re)) {
+
+            if (!englishDigits.has(m[1])) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+
+    hasBrokenTags(
+        original,
+        translated
+    ) {
+
+        const tagPattern =
+            /<\/?[a-zA-Z][^>]*>/g;
+
+        const originalTags =
+            original.match(tagPattern) || [];
+
+        const translatedTags =
+            translated.match(tagPattern) || [];
+
+        if (
+            originalTags.length !==
+            translatedTags.length
+        ) {
+            return true;
+        }
+
+        for (
+            let i = 0;
+            i < originalTags.length;
+            i++
+        ) {
+
+            if (
+                originalTags[i] !==
+                translatedTags[i]
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+
+    hasBrokenImportantTokens(
+        original,
+        translated
+    ) {
+
+        const tokens =
+            this.extractImportantTokens(
+                original
+            );
+
+        for (const token of tokens) {
+
+            const normalizedToken =
+                token
+                    .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
+                    .trim();
+
+            if (!normalizedToken) {
+                continue;
+            }
+
+            const normalizedTranslated =
+                translated
+                    .replace(/[.,!?;:'"“”‘’()[\]{}<>]/g, "")
+                    .trim();
+
+            if (
+                !normalizedTranslated.includes(
+                    normalizedToken
+                )
+            ) {
+
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+
+    extractImportantTokens(
+        text
+    ) {
+
+        const tokens = [];
+
+        const patterns = [
+
+            // URLs
+            /https?:\/\/[^\s]+/gi,
+
+            // Email addresses
+            /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+
+            // Percentages
+            /\b\d+(?:\.\d+)?%/g,
+
+            // Currency / amounts
+            /[$€£₹]\s?\d+(?:[.,]\d+)*/g,
+
+            // Numbers
+            /\b\d+(?:[.,]\d+)*\b/g
+        ];
+
+        for (const pattern of patterns) {
+
+            const matches =
+                text.match(pattern) || [];
+
+            for (const match of matches) {
+
+                if (
+                    !tokens.includes(match)
+                ) {
+                    tokens.push(match);
+                }
+            }
+        }
+
+        return tokens;
+    },
+
+
+    isSuspiciousEnglishCarryover(
+        original,
+        translated
+    ) {
+
+        const originalWords =
+            this.getEnglishWords(
+                original
+            );
+
+        if (
+            originalWords.length < 4
+        ) {
+            return false;
+        }
+
+        const translatedLower =
+            translated.toLowerCase();
+
+        let unchanged = 0;
+
+        for (
+            const word of originalWords
+        ) {
+
+            if (
+                translatedLower.includes(
+                    word.toLowerCase()
+                )
+            ) {
+
+                unchanged++;
+            }
+        }
+
+        return (
+            unchanged >= 4 &&
+            unchanged /
+            originalWords.length >= 0.7
+        );
+    },
+
+
+    cleanForEcho(value) {
+
+        return String(value || "")
+            .replace(/\|\|\|/g, " ")
+            .replace(/<[^>]*>/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    },
+
+
+    looksLikeEcho(candidate, english) {
+
+        if (!candidate || !english) {
+            return false;
+        }
+
+        if (candidate === english) {
+            return true;
+        }
+
+        // Gemini copied almost all of the English line
+        if (
+            english.startsWith(candidate) &&
+            candidate.length >= english.length * 0.85
+        ) {
+            return true;
+        }
+
+        if (
+            candidate.startsWith(english) &&
+            candidate.length <= english.length * 1.15
+        ) {
+            return true;
+        }
+
+        return false;
+    },
+
+
+    // Local only (no API call): removes the English subtitle when
+    // Gemini copied it before or after the translation, for example:
+    // "No, you don't understand. ഇല്ല, നിനക്ക് മനസ്സിലാകുന്നില്ല."
+    // Not used for Latin-script targets (can't tell English from target).
+    cleanEnglishEchoes(chunk, translations) {
+
+        if (this.lang().latinAllowed) {
+            return translations;
+        }
+
+        const target = this.rx(
+            this.scriptSource(),
+            "u"
+        );
+
+        const targetAll = this.rx(
+            this.scriptSource(),
+            "gu"
+        );
+
+        let removed = 0;
+
+        for (let i = 0; i < chunk.length; i++) {
+
+            let text = translations[i];
+
+            if (!text || typeof text !== "string") {
+                continue;
+            }
+
+            const english = this.cleanForEcho(chunk[i].text);
+
+            if (english.length < 3) {
+                continue;
+            }
+
+            let changed = false;
+
+            // English copied BEFORE the translation
+            const first = text.search(target);
+
+            if (first > 0) {
+
+                const prefix = this.cleanForEcho(
+                    text.slice(0, first)
+                );
+
+                if (this.looksLikeEcho(prefix, english)) {
+
+                    text = text.slice(first).trim();
+                    changed = true;
+                }
+            }
+
+            // English copied AFTER the translation
+            const letters = text.match(targetAll);
+
+            if (letters && letters.length > 0) {
+
+                const lastIndex = text.lastIndexOf(
+                    letters[letters.length - 1]
+                );
+
+                if (lastIndex < text.length - 1) {
+
+                    const suffixRaw = text.slice(lastIndex + 1);
+
+                    const suffix = this.cleanForEcho(suffixRaw);
+
+                    const latinStart = suffixRaw.search(/[A-Za-z0-9]/);
+
+                    if (
+                        latinStart >= 0 &&
+                        this.looksLikeEcho(suffix, english)
+                    ) {
+
+                        // Keep punctuation such as "?" after the translation
+                        text = (
+                            text.slice(0, lastIndex + 1) +
+                            suffixRaw.slice(0, latinStart)
+                        ).trim();
+
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed && text) {
+
+                translations[i] = text;
+                removed++;
+            }
+        }
+
+        if (removed > 0) {
+
+            console.warn(
+                `Removed copied English from ${removed} subtitle(s)`
+            );
+        }
+
+        return translations;
+    },
+
+
+    // ---------------------------------------------------------
+    // Last step for lines that STILL contain a wrong script (for
+    // example Ethiopic or Korean letters inside a word) or English
+    // after the normal recovery. Each such line is sent ALONE to
+    // Gemini: only its English sentence, with a short prompt.
+    //
+    // Alignment is safe: the English comes from the line's own position
+    // and the answer is written back to that same position. Timestamps
+    // and numbers are never touched. A reply is accepted only if it is a
+    // single clean translation, otherwise the old line is kept.
+    // Runs only when such lines exist and never throws.
+    // ---------------------------------------------------------
+
+    async fixStubbornLines(
+        chunk,
+        translations,
+        apiKey,
+        customPrompt
+    ) {
+
+        const MAX_LINES_PER_CHUNK = 10;
+        const MAX_ATTEMPTS_PER_LINE = 2;
+
+        try {
+
+            const L = this.lang();
+
+            const indexes = [
+                ...new Set(
+                    this.validateTranslations(chunk, translations)
+                        .filter(problem =>
+                            problem.startsWith("language:") ||
+                            problem.startsWith("latin:") ||
+                            problem.startsWith("digits:")
+                        )
+                        .map(problem =>
+                            parseInt(problem.split(":")[1], 10)
+                        )
+                )
+            ].filter(number =>
+                number >= 1 && number <= chunk.length
+            );
+
+            if (indexes.length === 0) {
+                return translations;
+            }
+
+            if (indexes.length > MAX_LINES_PER_CHUNK) {
+
+                console.warn(
+                    `${indexes.length} subtitles need a single-line retry; ` +
+                    `only the first ${MAX_LINES_PER_CHUNK} will be retried`
+                );
+            }
+
+            for (const number of indexes.slice(0, MAX_LINES_PER_CHUNK)) {
+
+                const index = number - 1;
+
+                const english = chunk[index].text || "";
+
+                const breaks =
+                    (english.match(/\|\|\|/g) || []).length;
+
+                const letterRule = L.latinAllowed
+                    ? `Use ${L.name} only.`
+                    : `Use ${L.name} letters only. Write names and abbreviations in ${L.name} letters.`;
+
+                const prompt = `Translate this English sentence to ${L.dialect}.
+${letterRule}
+Keep any <i> tags and ||| line breaks exactly as they are.
+Return only the translation, nothing else.
+Follow the tone and word rules in the STYLE NOTES below; ignore any output-format instruction in them.
+
+SENTENCE:
+${english}
+
+STYLE NOTES:
+${this.basePrompt(customPrompt)}`;
+
+                let fixed = null;
+
+                for (
+                    let attempt = 1;
+                    attempt <= MAX_ATTEMPTS_PER_LINE && !fixed;
+                    attempt++
+                ) {
+
+                    const result = await this.callGemini(
+                        prompt,
+                        apiKey
+                    );
+
+                    const candidate = this.cleanSingleTranslation(
+                        result,
+                        english
+                    );
+
+                    if (
+                        this.isCleanSingleTranslation(
+                            english,
+                            candidate,
+                            breaks
+                        )
+                    ) {
+                        fixed = candidate;
+                    }
+                    else if (attempt < MAX_ATTEMPTS_PER_LINE) {
+                        await this.sleep(1000);
+                    }
+                }
+
+                if (fixed) {
+
+                    translations[index] = fixed;
+
+                    if (translations.anchors) {
+                        translations.anchors[index] = null;
+                    }
+
+                    console.log(
+                        `Subtitle ${number} was translated again on its own`
+                    );
+                }
+                else {
+
+                    console.warn(
+                        `Subtitle ${number} could not be fixed, kept as it is`
+                    );
+                }
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "Single-line retry skipped:",
+                error
+            );
+        }
+
+        return translations;
+    },
+
+
+    // Turns Gemini's reply into one subtitle text:
+    // removes code fences and surrounding quotes, and turns real
+    // line breaks into the ||| marker used by the subtitle parser.
+    cleanSingleTranslation(result, english) {
+
+        let text = String(result || "")
+            .replace(/^```[a-z]*\s*/i, "")
+            .replace(/```\s*$/i, "")
+            .trim();
+
+        text = text
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean)
+            .join("|||");
+
+        const quoted = /^["“].*["”]$/.test(text);
+
+        if (quoted && !/^["“]/.test(String(english || "").trim())) {
+            text = text.slice(1, -1).trim();
+        }
+
+        return text;
+    },
+
+
+    // A reply is accepted only if it is ONE clean translation:
+    // same number of line breaks, target language only, tags unchanged.
+    isCleanSingleTranslation(english, text, breaks) {
+
+        if (!text || !text.trim()) {
+            return false;
+        }
+
+        if ((text.match(/\|\|\|/g) || []).length !== breaks) {
+            return false;
+        }
+
+        if (!this.hasTarget(text)) {
+            return false;
+        }
+
+        if (this.hasBadLanguage(text)) {
+            return false;
+        }
+
+        if (this.hasStrayDigits(english, text)) {
+            return false;
+        }
+
+        if (!this.lang().latinAllowed) {
+
+            const withoutProtected = text
+                .replace(/<[^>]*>/g, "")
+                .replace(/https?:\/\/[^\s]+/gi, "");
+
+            if (/[A-Za-z]/.test(withoutProtected)) {
+                return false;
+            }
+        }
+
+        if (this.hasBrokenTags(english, text)) {
+            return false;
+        }
+
+        return true;
+    },
+
+
+    // ---------------------------------------------------------
+    // English words left inside a translation.
+    // Asks Gemini ONLY for those words in the target script and
+    // swaps them in locally. HTML tags and URLs are never touched.
+    // Not used for Latin-script targets.
+    // ---------------------------------------------------------
+
+    englishWordPattern() {
+
+        return /[A-Za-z]+(?:['’.\-][A-Za-z]+)*/g;
+    },
+
+
+    findEnglishWords(text) {
+
+        const words = [];
+
+        const parts = String(text || "").split(
+            /(<[^>]*>|https?:\/\/[^\s]+)/gi
+        );
+
+        parts.forEach((part, index) => {
+
+            // odd positions are tags and URLs
+            if (index % 2 === 1) {
+                return;
+            }
+
+            (part.match(this.englishWordPattern()) || [])
+                .forEach(word => words.push(word));
+        });
+
+        return words;
+    },
+
+
+    // English words of a line, or [] when the line is mostly English
+    // (those lines are re-translated fully by the normal recovery).
+    wordsToFix(text) {
+
+        if (this.lang().latinAllowed) {
+            return [];
+        }
+
+        if (!text || typeof text !== "string") {
+            return [];
+        }
+
+        const words = this.findEnglishWords(text);
+
+        if (words.length === 0) {
+            return [];
+        }
+
+        // A Latin letter stuck to a target-script letter (for example
+        // "pക്ഷേ") is a broken word, not an English word. Sounding it out
+        // would give a wrong word, so leave it for the normal re-translation.
+        const withoutProtected = text
+            .replace(/<[^>]*>/g, " ")
+            .replace(/https?:\/\/[^\s]+/gi, " ");
+
+        const S = this.scriptSource();
+
+        if (
+            this.rx(
+                `[A-Za-z]${S}|${S}[A-Za-z]`,
+                "u"
+            ).test(withoutProtected)
+        ) {
+            return [];
+        }
+
+        const latinCount =
+            words.join("").replace(/[^A-Za-z]/g, "").length;
+
+        const targetCount =
+            this.countTarget(text);
+
+        if (words.length > 3 || latinCount > targetCount) {
+            return [];
+        }
+
+        return words;
+    },
+
+
+    replaceEnglishWords(text) {
+
+        const parts = text.split(
+            /(<[^>]*>|https?:\/\/[^\s]+)/gi
+        );
+
+        return parts.map((part, index) => {
+
+            if (index % 2 === 1) {
+                return part;
+            }
+
+            return part.replace(
+                this.englishWordPattern(),
+                word => this.wordCache[word.toLowerCase()] || word
+            );
+
+        }).join("");
+    },
+
+
+    async fixEnglishWords(
+        chunk,
+        translations,
+        apiKey,
+        customPrompt
+    ) {
+
+        try {
+
+            if (this.lang().latinAllowed) {
+                return translations;
+            }
+
+            const L = this.lang();
+
+            const wanted = new Map();
+
+            for (let i = 0; i < chunk.length; i++) {
+
+                for (const word of this.wordsToFix(translations[i])) {
+
+                    const key = word.toLowerCase();
+
+                    if (key in this.wordCache || wanted.has(key)) {
+                        continue;
+                    }
+
+                    wanted.set(key, {
+                        word: word,
+                        context: String(chunk[i].text || "")
+                            .replace(/\|\|\|/g, " ")
+                            .trim()
+                            .slice(0, 120)
+                    });
+                }
+            }
+
+            if (wanted.size > 0) {
+
+                const list = [...wanted.values()];
+
+                const prompt = `${this.basePrompt(customPrompt)}
+
+NEW TASK (this overrides any output-format instruction above):
+Write each English word below in ${L.name} letters, using the usual ${L.name} spelling.
+- Never use English letters.
+- Never use any other language's words or script.
+- Names are written the way they sound.
+- Use the context sentence only to understand the word.
+
+Return ONLY one line per word, in exactly this form:
+1: ${L.name} word
+2: ${L.name} word
+
+WORDS:
+${list.map((item, n) =>
+    `${n + 1}. ${item.word}   (context: ${item.context})`
+).join("\n")}`;
+
+                const result = await this.callGemini(
+                    prompt,
+                    apiKey
+                );
+
+                const answers = {};
+
+                result.split(/\r?\n/).forEach(line => {
+
+                    const match = line.match(
+                        /^\s*(\d+)\s*[:.)=\-]\s*(.+?)\s*$/
+                    );
+
+                    if (match) {
+
+                        answers[match[1]] = match[2]
+                            .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+                            .trim();
+                    }
+                });
+
+                list.forEach((item, n) => {
+
+                    const value = answers[String(n + 1)];
+
+                    const usable =
+                        value &&
+                        this.hasTarget(value) &&
+                        !/[A-Za-z]/.test(value) &&
+                        !this.hasBadLanguage(value);
+
+                    // "" means: asked already, no usable answer
+                    this.wordCache[item.word.toLowerCase()] =
+                        usable ? value : "";
+                });
+            }
+
+            let replaced = 0;
+
+            for (let i = 0; i < chunk.length; i++) {
+
+                const text = translations[i];
+
+                if (this.wordsToFix(text).length === 0) {
+                    continue;
+                }
+
+                const fixed = this.replaceEnglishWords(text);
+
+                if (fixed !== text) {
+
+                    translations[i] = fixed;
+                    replaced++;
+                }
+            }
+
+            if (replaced > 0) {
+
+                console.log(
+                    `Replaced English words in ${replaced} subtitle(s)`
+                );
+            }
+
+        } catch (error) {
+
+            // Never stop the translation because of this step.
+            // Normal validation and recovery still run afterwards.
+            console.warn(
+                "English word fix skipped:",
+                error
+            );
+        }
+
+        return translations;
+    },
+
+
+    hasMisalignedAnchor(
+        english,
+        anchors,
+        index
+    ) {
+
+        if (
+            !anchors ||
+            !anchors[index]
+        ) {
+            return false;
+        }
+
+        const clean = (value) =>
+            value
+                .replace(/\|\|\|/g, " ")
+                .toLowerCase()
+                .replace(/<[^>]*>/g, "")
+                .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+        const anchor =
+            clean(anchors[index]);
+
+        if (!anchor) {
+            return false;
+        }
+
+        return !clean(english).includes(anchor);
+    },
+
+
+    getEnglishWords(text) {
+
+        return (
+            text.match(
+                /\b[A-Za-z]{3,}\b/g
+            ) || []
+        );
+    },
+
+
+    normalizeForDuplicateCheck(
+        text
+    ) {
+
+        return text
+            .toLowerCase()
+            .replace(
+                /[\u200B-\u200D\uFEFF]/g,
+                ""
+            )
+            .replace(
+                /[.,!?;:'"“”‘’()[\]{}<>]/g,
+                ""
+            )
+            .replace(
+                /\s+/g,
+                " "
+            )
+            .trim();
+    },
+
+
+    isSuspiciousDuplicate(
+        chunk,
+        translations,
+        index
+    ) {
+
+        const current =
+            this.normalizeForDuplicateCheck(
+                translations[index] || ""
+            );
+
+        if (
+            !current ||
+            current.length < 8
+        ) {
+            return false;
+        }
+
+        const currentEnglish =
+            this.normalizeForDuplicateCheck(
+                chunk[index].text || ""
+            );
+
+        for (
+            let i = 0;
+            i < translations.length;
+            i++
+        ) {
+
+            if (i === index) {
+                continue;
+            }
+
+            const other =
+                this.normalizeForDuplicateCheck(
+                    translations[i] || ""
+                );
+
+            if (
+                !other ||
+                other !== current
+            ) {
+                continue;
+            }
+
+            const otherEnglish =
+                this.normalizeForDuplicateCheck(
+                    chunk[i].text || ""
+                );
+
+            if (
+                currentEnglish ===
+                otherEnglish
+            ) {
+                continue;
+            }
+
+            if (
+                this.englishMeaningLooksDifferent(
+                    currentEnglish,
+                    otherEnglish
+                )
+            ) {
+
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+
+    englishMeaningLooksDifferent(
+        a,
+        b
+    ) {
+
+        const wordsA =
+            new Set(
+                a
+                    .split(/\s+/)
+                    .filter(
+                        word =>
+                            word.length > 2
+                    )
+            );
+
+        const wordsB =
+            new Set(
+                b
+                    .split(/\s+/)
+                    .filter(
+                        word =>
+                            word.length > 2
+                    )
+            );
+
+        if (
+            wordsA.size === 0 ||
+            wordsB.size === 0
+        ) {
+            return false;
+        }
+
+        let common = 0;
+
+        for (
+            const word of wordsA
+        ) {
+
+            if (
+                wordsB.has(word)
+            ) {
+                common++;
+            }
+        }
+
+        const similarity =
+            common /
+            Math.max(
+                wordsA.size,
+                wordsB.size
+            );
+
+        return similarity < 0.5;
+    },
+
+
+    async recoverProblems(
+        chunk,
+        translations,
+        problems,
+        apiKey,
+        customPrompt
+    ) {
+
+        const L = this.lang();
+
+        const indexes =
+            [
+                ...new Set(
+                    problems
+                        .map(problem => {
+
+                            const match =
+                                problem.match(
+                                    /:(\d+)$/
+                                );
+
+                            return match
+                                ? parseInt(
+                                    match[1],
+                                    10
+                                )
+                                : null;
+                        })
+                        .filter(
+                            number =>
+                                number !== null
+                        )
+                )
+            ];
+
+        if (
+            indexes.length === 0
+        ) {
+
+            throw new Error(
+                "Translation validation failed"
+            );
+        }
+
+        const input =
+            indexes.map(number => {
+
+                const index =
+                    number - 1;
+
+                const previous =
+                    index > 0
+                        ? chunk[index - 1].text
+                        : "";
+
+                const current =
+                    chunk[index].text;
+
+                const next =
+                    index < chunk.length - 1
+                        ? chunk[index + 1].text
+                        : "";
+
+                return `[[SUBTITLE_${number}]]
+
+PREVIOUS CONTEXT:
+${previous}
+
+TARGET ENGLISH:
+${current}
+
+NEXT CONTEXT:
+${next}`;
+
+            }).join("\n\n");
+
+        const scriptLine = L.latinAllowed
+            ? `- Write in ${L.name} only. Do not use any non-Latin script. Never repeat the English text.`
+            : `- Write everything in ${L.name} script, including names and abbreviations. Never use English letters and never repeat the English text.
+- Do not use any other language's script or words.`;
+
+        const prompt = `${this.basePrompt(customPrompt)}
+
+A previous translation response contained one or more suspicious subtitle translations.
+
+Translate ONLY the requested subtitle IDs below.
+
+STRICT RULES:
+- Preserve every [[SUBTITLE_X]] ID exactly.
+- Each requested ID must appear exactly once.
+- Translate the TARGET ENGLISH belonging to that exact ID.
+- Do not copy the translation of another subtitle.
+- Use PREVIOUS CONTEXT and NEXT CONTEXT only to understand meaning.
+- Do not translate the context as separate subtitles.
+- Use ${L.dialect}.
+- Preserve emotion, personality and slang.
+${scriptLine}
+- Preserve HTML tags exactly.
+- Preserve important numbers, URLs and proper nouns.
+- Return ONLY the requested IDs and their ${L.name} translations.
+- Do not add explanations.
+
+FORMAT:
+[[SUBTITLE_X]]
+${L.name} translation
+
+SUBTITLES:
+${input}`;
+
+
+        let lastError;
+
+        for (
+            let attempt = 1;
+            attempt <= CONFIG.MAX_RETRIES;
+            attempt++
+        ) {
+
+            try {
+
+                const result =
+                    await this.callGemini(
+                        prompt,
+                        apiKey
+                    );
+
+                const recovered =
+                    this.parseIdTranslations(
+                        result,
+                        chunk.length
+                    );
+
+                for (
+                    const number of indexes
+                ) {
+
+                    const value =
+                        recovered[
+                            number - 1
+                        ];
+
+                    if (
+                        value &&
+                        value.trim()
+                    ) {
+
+                        translations[
+                            number - 1
+                        ] = value;
+
+                        if (translations.anchors) {
+                            translations.anchors[number - 1] = null;
+                        }
+                    }
+                }
+
+                const remaining =
+                    indexes.filter(
+                        number => {
+
+                            const value =
+                                translations[
+                                    number - 1
+                                ];
+
+                            return (
+                                !value ||
+                                !value.trim()
+                            );
+                        }
+                    );
+
+                if (
+                    remaining.length === 0
+                ) {
+
+                    return translations;
+                }
+
+                throw new Error(
+                    "Recovery still incomplete"
+                );
+
+            } catch (error) {
+
+                lastError =
+                    error;
+
+                if (
+                    attempt >=
+                    CONFIG.MAX_RETRIES
+                ) {
+                    break;
+                }
+
+                let delay;
+
+                if (
+                    error.retryDelay
+                ) {
+
+                    delay =
+                        this.parseRetryDelay(
+                            error.retryDelay
+                        );
+
+                } else {
+
+                    delay =
+                        CONFIG.INITIAL_RETRY_DELAY *
+                        Math.pow(
+                            2,
+                            attempt - 1
+                        );
+                }
+
+                delay =
+                    Math.min(
+                        delay,
+                        CONFIG.MAX_RETRY_DELAY
+                    );
+
+                console.log(
+                    `Waiting ` +
+                    `${Math.ceil(delay / 1000)}s ` +
+                    `before recovery retry...`
+                );
+
+                await this.sleep(
+                    delay
+                );
+            }
+        }
+
+        throw lastError ||
+            new Error(
+                "Could not recover problematic translations"
+            );
+    },
+
+
+    // ---------------------------------------------------------
+    // Saved progress
+    // Every finished chunk is kept on the device. If the page closes or
+    // the translation stops, uploading the same file again (with the same
+    // style and prompt) continues from the saved chunks.
+    // ---------------------------------------------------------
+
+    RESUME_KEY: "shitsub_resume",
+
+    RESUME_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+
+
+    notify(text) {
+
+        try {
+
+            if (typeof this.onStatus === "function") {
+                this.onStatus(text);
+            }
+
+        } catch (error) {
+            // A note must never stop the translation
+        }
+    },
+
+
+    hashText(text) {
+
+        let h1 = 0x811c9dc5;
+        let h2 = 5381;
+
+        for (let i = 0; i < text.length; i++) {
+
+            const c = text.charCodeAt(i);
+
+            h1 ^= c;
+            h1 = Math.imul(h1, 16777619);
+
+            h2 = (Math.imul(h2, 33) + c) | 0;
+        }
+
+        return (
+            (h1 >>> 0).toString(16) +
+            (h2 >>> 0).toString(16) +
+            text.length.toString(16)
+        );
+    },
+
+
+    // Same file + same style/prompt + same settings = same key
+    makeJobKey(chunks, customPrompt) {
+
+        const body = chunks
+            .map(chunk => chunk.map(s => s.text).join("\u0001"))
+            .join("\u0002");
+
+        return this.hashText(
+            [
+                CONFIG.TARGET_LANGUAGE,
+                CONFIG.MODEL,
+                chunks.length,
+                String(customPrompt || "")
+            ].join("\u0003") + "\u0004" + body
+        );
+    },
+
+
+    readResume() {
+
+        try {
+
+            const raw = localStorage.getItem(this.RESUME_KEY);
+
+            return raw ? JSON.parse(raw) : null;
+
+        } catch (error) {
+
+            return null;
+        }
+    },
+
+
+    loadSavedChunks(jobKey, chunks) {
+
+        const found = {};
+
+        const data = this.readResume();
+
+        if (!data || data.key !== jobKey || !data.chunks) {
+            return found;
+        }
+
+        if (
+            !data.savedAt ||
+            Date.now() - data.savedAt > this.RESUME_MAX_AGE_MS
+        ) {
+            return found;
+        }
+
+        chunks.forEach((chunk, i) => {
+
+            const texts = data.chunks[String(i)];
+
+            if (
+                Array.isArray(texts) &&
+                texts.length === chunk.length &&
+                texts.every(t => typeof t === "string" && t.trim())
+            ) {
+                found[i] = texts;
+            }
+        });
+
+        return found;
+    },
+
+
+    saveChunk(jobKey, chunkIndex, translatedChunk) {
+
+        try {
+
+            let data = this.readResume();
+
+            if (!data || data.key !== jobKey || !data.chunks) {
+                data = { key: jobKey, chunks: {} };
+            }
+
+            data.savedAt = Date.now();
+
+            data.chunks[String(chunkIndex)] =
+                translatedChunk.map(subtitle => subtitle.text);
+
+            localStorage.setItem(
+                this.RESUME_KEY,
+                JSON.stringify(data)
+            );
+
+        } catch (error) {
+
+            // Full or blocked storage: the translation simply continues
+            console.warn("Could not save progress:", error);
+        }
+    },
+
+
+    clearSavedChunks() {
+
+        try {
+
+            localStorage.removeItem(this.RESUME_KEY);
+
+        } catch (error) {
+            // Nothing to do
+        }
+    },
+
+
+    async translateWithThrottling(
+        chunks,
+        apiKey,
+        customPrompt,
+        onProgress
+    ) {
+
+        // NEW: split into equal chunks so every parallel worker is used
+        // (700 lines becomes 5 x 140). Uses balanceChunks() from config.js.
+        // Skipped automatically if that function is missing, or turned
+        // off with CONFIG.BALANCE_CHUNKS = false.
+        if (
+            CONFIG.BALANCE_CHUNKS !== false &&
+            typeof balanceChunks === "function"
+        ) {
+            chunks = balanceChunks(chunks);
+        }
+
+        const results =
+            new Array(chunks.length);
+
+        let completed = 0;
+
+        const maxParallel =
+            CONFIG.MAX_PARALLEL || 1;
+
+        // Chunks finished in an earlier run of this same file and style
+        const jobKey =
+            this.makeJobKey(chunks, customPrompt);
+
+        const saved =
+            this.loadSavedChunks(jobKey, chunks);
+
+        const pending = [];
+
+        chunks.forEach((chunk, i) => {
+
+            if (saved[i]) {
+
+                results[i] = chunk.map(
+                    (subtitle, n) => ({
+                        ...subtitle,
+                        text: saved[i][n]
+                    })
+                );
+
+                completed++;
+            }
+            else {
+
+                pending.push(i);
+            }
+        });
+
+        if (completed > 0) {
+
+            const note =
+                `Continuing from saved progress ` +
+                `(${completed} of ${chunks.length} parts already done)`;
+
+            console.log(note);
+
+            this.notify(note);
+
+            if (onProgress) {
+
+                onProgress(
+                    completed,
+                    chunks.length
+                );
+            }
+        }
+
+        for (
+            let start = 0;
+            start < pending.length;
+            start += maxParallel
+        ) {
+
+            const group =
+                pending.slice(
+                    start,
+                    start + maxParallel
+                );
+
+            const translated =
+                await Promise.all(
+                    group.map(
+                        async (chunkIndex) => {
+
+                            const chunk =
+                                chunks[chunkIndex];
+
+                            const chunkNumber =
+                                chunkIndex + 1;
+
+                            let lastError;
+
+                            for (
+                                let attempt = 1;
+                                attempt <= CONFIG.MAX_RETRIES;
+                                attempt++
+                            ) {
+
+                                try {
+
+                                    const done =
+                                        await this.translateChunk(
+                                            chunk,
+                                            apiKey,
+                                            customPrompt
+                                        );
+
+                                    // Keep it on the device right away
+                                    this.saveChunk(
+                                        jobKey,
+                                        chunkIndex,
+                                        done
+                                    );
+
+                                    return done;
+
+                                } catch (error) {
+
+                                    lastError =
+                                        error;
+
+                                    console.warn(
+                                        `Chunk ${chunkNumber} ` +
+                                        `failed ` +
+                                        `(attempt ${attempt}/` +
+                                        `${CONFIG.MAX_RETRIES})`,
+                                        error
+                                    );
+
+                                    if (
+                                        attempt >=
+                                        CONFIG.MAX_RETRIES
+                                    ) {
+                                        break;
+                                    }
+
+                                    let delay;
+
+                                    if (
+                                        error.retryDelay
+                                    ) {
+
+                                        delay =
+                                            this.parseRetryDelay(
+                                                error.retryDelay
+                                            );
+
+                                    } else {
+
+                                        delay =
+                                            CONFIG.INITIAL_RETRY_DELAY *
+                                            Math.pow(
+                                                2,
+                                                attempt - 1
+                                            );
+                                    }
+
+                                    delay =
+                                        Math.min(
+                                            delay,
+                                            CONFIG.MAX_RETRY_DELAY
+                                        );
+
+                                    this.notify(
+                                        error.timedOut
+                                            ? `Gemini is slow, retrying ` +
+                                              `(attempt ${attempt + 1} of ${CONFIG.MAX_RETRIES})`
+                                            : `Waiting ${Math.ceil(delay / 1000)}s before trying again ` +
+                                              `(attempt ${attempt + 1} of ${CONFIG.MAX_RETRIES})`
+                                    );
+
+                                    console.log(
+                                        `Waiting ` +
+                                        `${Math.ceil(delay / 1000)}s ` +
+                                        `before retrying chunk ` +
+                                        `${chunkNumber}...`
+                                    );
+
+                                    await this.sleep(
+                                        delay
+                                    );
+                                }
+                            }
+
+                            throw new Error(
+                                `Chunk ${chunkNumber} failed: ` +
+                                `${lastError?.message ||
+                                "Unknown error"}`
+                            );
+                        }
+                    )
+                );
+
+            translated.forEach(
+                (chunkResult, i) => {
+
+                    results[
+                        group[i]
+                    ] = chunkResult;
+                }
+            );
+
+            completed +=
+                translated.length;
+
+            if (onProgress) {
+
+                onProgress(
+                    completed,
+                    chunks.length
+                );
+            }
+
+            if (
+                start + maxParallel <
+                pending.length
+            ) {
+
+                await this.sleep(
+                    CONFIG.BATCH_DELAY
+                );
+            }
+        }
+
+        // Everything is done: the saved copy is no longer needed
+        this.clearSavedChunks();
+
+        return results;
+    },
+
+
+    parseRetryDelay(value) {
+
+        if (!value) {
+            return 5000;
+        }
+
+        if (
+            typeof value === "string" &&
+            value.endsWith("s")
+        ) {
+
+            const seconds =
+                parseFloat(
+                    value.slice(
+                        0,
+                        -1
+                    )
+                );
+
+            if (
+                Number.isFinite(seconds)
+            ) {
+
+                return (
+                    seconds * 1000
+                ) + 1000;
+            }
+        }
+
+        return 5000;
+    },
+
+
+    sleep(ms) {
+
+        return new Promise(
+            resolve =>
+                setTimeout(
+                    resolve,
+                    ms
+                )
+        );
+    },
+
+
+    reset() {
+        this.wordCache = {};
+    }
+};
