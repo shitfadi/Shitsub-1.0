@@ -347,9 +347,7 @@ ${input}`;
                         }
                     ],
                     generationConfig: {
-                        // NEW: 200-line chunks in Malayalam need more room.
-                        // Can be overridden with CONFIG.MAX_OUTPUT_TOKENS.
-                        maxOutputTokens: CONFIG.MAX_OUTPUT_TOKENS || 32768
+                        maxOutputTokens: 16384
                     }
                 })
             }
@@ -2282,17 +2280,6 @@ ${input}`;
         customPrompt,
         onProgress
     ) {
-
-        // NEW: split into equal chunks so every parallel worker is used
-        // (700 lines becomes 5 x 140). Uses balanceChunks() from config.js.
-        // Skipped automatically if that function is missing, or turned
-        // off with CONFIG.BALANCE_CHUNKS = false.
-        if (
-            CONFIG.BALANCE_CHUNKS !== false &&
-            typeof balanceChunks === "function"
-        ) {
-            chunks = balanceChunks(chunks);
-        }
 
         const results =
             new Array(chunks.length);
