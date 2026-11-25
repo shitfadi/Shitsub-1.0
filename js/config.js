@@ -12,14 +12,14 @@ API_URL: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-fla
     TARGET_LANGUAGE: "malayalam",
 
         CHUNK_SIZE: 200,
-    MAX_PARALLEL: 5,
+    MAX_PARALLEL: 4,
     MIN_PARALLEL: 1,
 
     MAX_RETRIES: 5,
     INITIAL_RETRY_DELAY: 5000,
     MAX_RETRY_DELAY: 120000,
 
-    BATCH_DELAY: 8000,
+    BATCH_DELAY: 5000,
 
     STORAGE_KEYS: {
         API_KEY: "shitsub_api_key",
